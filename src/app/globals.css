@@ -1,0 +1,126 @@
+/* 휴대폰 화면을 기준으로 만든 디자인입니다. */
+:root {
+  --bg: #0f1115;
+  --card: #181b22;
+  --card-2: #20242d;
+  --line: #2b303b;
+  --text: #e8eaf0;
+  --muted: #9aa3b2;
+  --accent: #4f8cff;
+  --ok: #33c77f;
+  --warn: #ffb020;
+  --bad: #ff5d5d;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard",
+    "Noto Sans KR", "Malgun Gothic", sans-serif;
+  font-size: 16px;               /* 휴대폰에서 입력할 때 화면이 확대되지 않는 최소 크기 */
+  line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
+}
+
+.app {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 16px 16px 96px;       /* 아래 탭바에 가려지지 않게 여백 */
+}
+
+h1 { font-size: 22px; margin: 4px 0 2px; }
+h2 { font-size: 17px; margin: 0 0 10px; }
+p.sub { color: var(--muted); font-size: 14px; margin: 0 0 18px; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 6px; }
+
+input[type="text"], input[type="password"], input[type="datetime-local"], textarea {
+  width: 100%;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  padding: 13px 12px;
+  font-size: 16px;
+  font-family: inherit;
+}
+textarea { min-height: 150px; resize: vertical; }
+input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.field { margin-bottom: 14px; }
+
+button {
+  font-family: inherit;
+  font-size: 16px;
+  border: none;
+  border-radius: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  min-height: 48px;              /* 손가락으로 누르기 편한 크기 */
+}
+.btn-main { background: var(--accent); color: #fff; width: 100%; font-weight: 600; }
+.btn-main:disabled { opacity: .5; }
+.btn-sub { background: var(--card-2); color: var(--text); border: 1px solid var(--line); }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* 올릴 곳 고르기 */
+.channels { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.channel {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--card-2);
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  padding: 13px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+.channel.on { border-color: var(--accent); background: #1d2a44; }
+.channel .emoji { font-size: 20px; }
+.channel .name { font-size: 15px; font-weight: 600; }
+.channel .tag { font-size: 11px; color: var(--muted); display: block; font-weight: 400; }
+
+/* 아래 탭바 */
+.tabbar {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  display: flex;
+  background: rgba(20,23,30,.96);
+  border-top: 1px solid var(--line);
+  padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+  backdrop-filter: blur(8px);
+  z-index: 50;
+}
+.tabbar a {
+  flex: 1; text-align: center; text-decoration: none;
+  color: var(--muted); font-size: 12px; padding: 4px 0;
+}
+.tabbar a.on { color: var(--accent); }
+.tabbar .ico { display: block; font-size: 20px; line-height: 1.2; }
+
+/* 상태 배지 */
+.badge { display: inline-block; font-size: 12px; padding: 3px 9px; border-radius: 999px; }
+.badge.done { background: rgba(51,199,127,.15); color: var(--ok); }
+.badge.failed { background: rgba(255,93,93,.15); color: var(--bad); }
+.badge.manual { background: rgba(255,176,32,.15); color: var(--warn); }
+.badge.scheduled, .badge.sending, .badge.draft { background: rgba(79,140,255,.15); color: var(--accent); }
+
+.note { font-size: 13px; color: var(--muted); margin-top: 8px; }
+.alert { border-radius: 10px; padding: 12px; font-size: 14px; margin-bottom: 14px; }
+.alert.ok { background: rgba(51,199,127,.12); color: var(--ok); }
+.alert.bad { background: rgba(255,93,93,.12); color: var(--bad); }
+
+.row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.preview { width: 100%; border-radius: 10px; margin-top: 10px; display: block; }
+a { color: var(--accent); }
