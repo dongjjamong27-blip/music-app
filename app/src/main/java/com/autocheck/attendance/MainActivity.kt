@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
@@ -231,6 +232,9 @@ private fun HomeScreen() {
                     }
                 }
             }
+
+            // 앱 업데이트
+            item { UpdateCard() }
 
             // 기록
             item {
@@ -482,5 +486,76 @@ private fun StepModeRow(checked: Boolean, onChange: (Boolean) -> Unit) {
                 "예) 출석체크, 출석 -> 둘 중 화면에 보이는 것 하나만 누름",
             fontSize = 12.sp
         )
+    }
+}
+
+/** 5. 앱 업데이트 — 브라우저를 거치지 않고 앱 안에서 새 버전으로 바꾼다. */
+@Composable
+private fun UpdateCard() {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var status by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+
+    Card {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("5. 앱 업데이트", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Text(
+                "지금 버전: ${Updater.currentVersionName(context)}",
+                fontSize = 13.sp
+            )
+
+            Button(
+                enabled = !busy,
+                onClick = {
+                    busy = true
+                    status = "새 버전이 있는지 확인 중..."
+                    scope.launch {
+                        val result = runCatching {
+                            withContext(Dispatchers.IO) { Updater.fetchLatest() }
+                        }
+                        val info = result.getOrNull()
+                        if (info == null) {
+                            status = "확인 실패: ${result.exceptionOrNull()?.message ?: "인터넷을 확인해 주세요"}"
+                            busy = false
+                            return@launch
+                        }
+
+                        if (info.versionCode <= Updater.currentVersionCode(context)) {
+                            status = "이미 최신 버전이에요 ✅"
+                            busy = false
+                            return@launch
+                        }
+
+                        if (!Updater.canInstall(context)) {
+                            status = "설치 허용을 켜 주세요. 설정 화면을 엽니다."
+                            Updater.openInstallPermission(context)
+                            busy = false
+                            return@launch
+                        }
+
+                        status = "새 버전 ${info.versionName} 내려받는 중..."
+                        val file = runCatching {
+                            withContext(Dispatchers.IO) { Updater.download(context, info.url) }
+                        }
+                        if (file.isSuccess) {
+                            status = "설치 화면을 엽니다. '설치'를 눌러 주세요."
+                            Updater.install(context, file.getOrThrow())
+                        } else {
+                            status = "다운로드 실패: ${file.exceptionOrNull()?.message}"
+                        }
+                        busy = false
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text(if (busy) "잠시만요..." else "업데이트 확인") }
+
+            if (status.isNotEmpty()) Text(status, fontSize = 13.sp)
+
+            Text(
+                "인터넷은 새 버전을 받을 때만 씁니다. 출석체크 내용은 밖으로 나가지 않아요.",
+                fontSize = 12.sp
+            )
+        }
     }
 }

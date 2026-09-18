@@ -33,6 +33,18 @@ jobs:
       - name: 파일 이름 정리
         run: cp app/build/outputs/apk/release/app-release.apk auto-attendance.apk
 
+      # 앱 안의 '업데이트 확인' 이 읽는 파일
+      - name: version.json 만들기
+        run: |
+          cat > version.json <<JSON
+          {
+            "versionCode": ${{ github.run_number }},
+            "versionName": "1.${{ github.run_number }}",
+            "url": "https://github.com/${{ github.repository }}/releases/download/apk/auto-attendance.apk"
+          }
+          JSON
+          cat version.json
+
       - name: APK 올리기 (Artifacts)
         uses: actions/upload-artifact@v4
         with:
@@ -53,5 +65,7 @@ jobs:
             (압축을 풀 필요도, 로그인할 필요도 없습니다)
 
             설치 방법 → [설치방법.md](https://github.com/dongjjamong27-blip/music-app/blob/claude/mobile-auto-attendance-app-gb2211/%EC%84%A4%EC%B9%98%EB%B0%A9%EB%B2%95.md)
-          files: auto-attendance.apk
+          files: |
+            auto-attendance.apk
+            version.json
           make_latest: true

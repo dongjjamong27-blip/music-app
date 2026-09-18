@@ -102,6 +102,7 @@ https://github.com/dongjjamong27-blip/music-app/releases/latest
 | `AutoCheckService.kt` | 앱 열기 → 버튼 찾기 → 누르기 순서를 진행 |
 | `AlarmScheduler.kt` | 매일 정해진 시간에 깨우는 알람 |
 | `Store.kt` | 설정과 실행 기록 저장 |
+| `Updater.kt` | 앱 안에서 새 버전 받아 설치 |
 | `WakeActivity.kt` | 꺼진 화면 켜기 |
 
 ---
@@ -109,4 +110,5 @@ https://github.com/dongjjamong27-blip/music-app/releases/latest
 ## 6. 주의
 
 - 본인 휴대폰에서 **본인 계정의 출석체크**를 편하게 하기 위한 개인용 도구입니다.
+- 인터넷은 `업데이트 확인` 을 눌렀을 때 새 버전을 받는 용도로만 씁니다. 어떤 정보도 밖으로 보내지 않습니다.
 - 앱마다 자동화 사용을 약관으로 금지할 수 있으니, 사용 전에 해당 앱의 이용약관을 확인하세요.

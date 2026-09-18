@@ -4,6 +4,9 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// GitHub 에서 빌드할 때마다 버전 번호가 1씩 올라간다. (앱 안 업데이트 확인에 쓰임)
+val buildNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
+
 android {
     namespace = "com.autocheck.attendance"
     compileSdk = 35
@@ -12,8 +15,8 @@ android {
         applicationId = "com.autocheck.attendance"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = buildNumber
+        versionName = "1.$buildNumber"
     }
 
     buildTypes {
