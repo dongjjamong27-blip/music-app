@@ -124,3 +124,22 @@ button {
 .row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .preview { width: 100%; border-radius: 10px; margin-top: 10px; display: block; }
 a { color: var(--accent); }
+
+/* 설정 도우미: 단계 번호 동그라미 */
+.step-no {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* 읽기 전용 주소 칸은 길어도 한 줄로 */
+input[readonly] { color: var(--muted); font-size: 13px; }

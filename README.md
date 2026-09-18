@@ -23,6 +23,34 @@
 
 ---
 
+## ⚡ 바로가기 (누르면 그 페이지로 갑니다)
+
+설정하다 막히면 아래를 그냥 누르세요. 필요한 정확한 페이지로 바로 이동합니다.
+
+| 무엇을 | 바로가기 |
+|---|---|
+| 0️⃣ 기본 브랜치를 `main`으로 바꾸기 | **[저장소 설정 열기](https://github.com/dongjjamong27-blip/music-app/settings)** → `Default branch` 연필 아이콘 → `main` |
+| 1️⃣ Vercel에 처음 올리기 | **[새 프로젝트 만들기](https://vercel.com/new)** → `music-app` 선택 |
+| 2️⃣ Vercel 환경변수 넣기 | **[Vercel 대시보드](https://vercel.com/dashboard)** → 프로젝트 → `Settings` → `Environment Variables` |
+| 3️⃣ 유튜브 기능 켜기 | **[YouTube Data API 켜기](https://console.cloud.google.com/apis/library/youtube.googleapis.com)** |
+| 4️⃣ 구글 출입증 만들기 | **[OAuth 클라이언트 만들기](https://console.cloud.google.com/apis/credentials/oauthclient)** (유형: 웹 애플리케이션) |
+| 5️⃣ 페이스북 페이지 만들기 | **[페이지 만들기](https://www.facebook.com/pages/create)** |
+| 6️⃣ 페이스북 앱 만들기 | **[앱 만들기](https://developers.facebook.com/apps/create/)** (유형: 비즈니스) |
+| 7️⃣ 자동 글쓰기 API 키 | **[Anthropic 키 발급](https://console.anthropic.com/settings/keys)** |
+
+> 💡 **더 편한 방법:** 배포가 끝나면 앱 안에 **[⚙️ 설정]** 탭이 생깁니다.
+> 거기서는 위 버튼들이 전부 들어있고, **붙여넣을 주소도 [복사] 버튼 한 번**이면 됩니다.
+> 비밀 열쇠(`ENCRYPTION_KEY`)도 버튼 한 번으로 만들어 줍니다.
+
+### 붙여넣어야 하는 주소 (내 주소로 바꿔서)
+
+| 어디에 | 무엇을 |
+|---|---|
+| 구글 → 승인된 리디렉션 URI | `https://내주소/api/connect/google/callback` |
+| 페이스북 → 유효한 OAuth 리디렉션 URI | `https://내주소/api/connect/meta/callback` |
+
+---
+
 ## 🚀 시작하기 (처음 한 번만)
 
 ### 1단계. 인터넷에 올리기 (무료)
@@ -136,6 +164,7 @@ src/
  ├ app/                     화면과 서버 기능
  │  ├ page.tsx              ✏️ 글쓰기 화면
  │  ├ connect/              🔗 계정 연결 화면
+ │  ├ setup/                ⚙️ 처음 설정 도우미 (바로가기 버튼 모음)
  │  ├ history/              📋 기록 화면
  │  └ api/                  서버가 하는 일들
  │     ├ posts/             글 올리기

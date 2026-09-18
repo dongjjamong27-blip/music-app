@@ -41,6 +41,16 @@ export default function ConnectPanel({ accounts, ok, error }: { accounts: Accoun
       {msg && <div className="alert ok">{msg}</div>}
 
       <div className="card">
+        <h2>⚙️ 처음이신가요?</h2>
+        <p className="note" style={{ marginTop: 0 }}>
+          버튼만 누르면 필요한 사이트가 바로 열리는 설명서를 준비했어요.
+        </p>
+        <a href="/setup" style={{ textDecoration: 'none' }}>
+          <button className="btn-main" style={{ width: '100%' }}>처음 설정 도우미 열기 →</button>
+        </a>
+      </div>
+
+      <div className="card">
         <div className="row">
           <h2 style={{ margin: 0 }}>▶️ 유튜브</h2>
           {find('youtube') && <span className="badge done">연결됨</span>}
@@ -52,7 +62,11 @@ export default function ConnectPanel({ accounts, ok, error }: { accounts: Accoun
           </>
         ) : (
           <>
-            <p className="note">구글 계정으로 로그인하면 영상이 자동으로 올라갑니다.</p>
+            <p className="note">
+              구글 계정으로 로그인하면 영상이 자동으로 올라갑니다.
+              <br />
+              아직 준비가 안 됐다면 <a href="/setup">설정 도우미</a>를 먼저 보세요.
+            </p>
             <a href="/api/connect/google"><button className="btn-main">구글 계정으로 연결하기</button></a>
           </>
         )}
@@ -73,6 +87,8 @@ export default function ConnectPanel({ accounts, ok, error }: { accounts: Accoun
             <p className="note">
               인스타 계정이 <b>프로페셔널(비즈니스/크리에이터)</b> 이어야 하고, 페이스북 페이지와 연결되어 있어야 해요.
               (인스타 설정 → 계정 → 프로페셔널 계정으로 전환, 무료)
+              <br />
+              준비 방법은 <a href="/setup">설정 도우미</a>에 버튼으로 정리해뒀어요.
             </p>
             <a href="/api/connect/meta"><button className="btn-main">페이스북으로 연결하기</button></a>
           </>
