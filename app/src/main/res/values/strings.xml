@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">자동 출석체크</string>
+    <string name="accessibility_label">자동 출석체크 도우미</string>
+    <string name="accessibility_description">등록한 앱을 자동으로 열어서 출석체크 버튼을 찾아 눌러 줍니다. 화면의 글자를 읽는 권한이 필요합니다.</string>
+</resources>
