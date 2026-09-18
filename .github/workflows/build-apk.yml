@@ -5,6 +5,9 @@ on:
     branches: ["**"]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -27,9 +30,28 @@ jobs:
       - name: APK 빌드
         run: gradle --no-daemon assembleRelease
 
-      - name: APK 올리기
+      - name: 파일 이름 정리
+        run: cp app/build/outputs/apk/release/app-release.apk auto-attendance.apk
+
+      - name: APK 올리기 (Artifacts)
         uses: actions/upload-artifact@v4
         with:
           name: auto-attendance-apk
-          path: app/build/outputs/apk/release/*.apk
+          path: auto-attendance.apk
           if-no-files-found: error
+
+      # 휴대폰에서 로그인 없이 바로 받을 수 있도록 Release 에도 올린다.
+      - name: Release 에 APK 올리기
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk
+          name: 자동 출석체크 APK (최신)
+          body: |
+            휴대폰에 설치할 파일입니다.
+
+            아래 **auto-attendance.apk** 를 누르면 바로 다운로드됩니다.
+            (압축을 풀 필요도, 로그인할 필요도 없습니다)
+
+            설치 방법 → [설치방법.md](https://github.com/dongjjamong27-blip/music-app/blob/claude/mobile-auto-attendance-app-gb2211/%EC%84%A4%EC%B9%98%EB%B0%A9%EB%B2%95.md)
+          files: auto-attendance.apk
+          make_latest: true

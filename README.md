@@ -33,11 +33,16 @@ PC 없이 휴대폰 하나만 있으면 됩니다.
 
 ## 2. APK 받는 방법 (설치 파일)
 
-1. 이 저장소 위쪽의 **Actions** 탭을 누르세요.
-2. `APK 만들기` 중 가장 최근 것(초록색 ✅)을 누르세요.
-3. 아래 **Artifacts** 에 있는 `auto-attendance-apk` 를 눌러 zip 을 내려받습니다.
-4. zip 을 풀면 `app-release.apk` 가 나옵니다. 휴대폰으로 옮겨서 설치하세요.
-   - 설치할 때 "출처를 알 수 없는 앱" 허용이 필요할 수 있습니다.
+### 휴대폰에서 바로 받기 ⭐
+
+아래 주소를 휴대폰 브라우저로 열고 **`auto-attendance.apk`** 를 누르면 끝입니다.
+로그인도, 압축 풀기도 필요 없습니다.
+
+```
+https://github.com/dongjjamong27-blip/music-app/releases/latest
+```
+
+> 자세한 설치 과정은 [설치방법.md](설치방법.md) 를 보세요.
 
 ---
 
