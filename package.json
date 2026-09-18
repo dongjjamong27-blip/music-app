@@ -1,0 +1,24 @@
+{
+  "name": "one-post",
+  "version": "1.0.0",
+  "private": true,
+  "description": "한 번 쓰면 유튜브/인스타/네이버블로그/헬로톡에 올려주는 휴대폰용 자동등록 앱",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start -p ${PORT:-3000}",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.126.0",
+    "next": "15.5.4",
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.3",
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.6",
+    "typescript": "5.8.3"
+  }
+}
