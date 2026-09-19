@@ -11,7 +11,8 @@ export default function ConnectPanel({ accounts, ok, error }: { accounts: Accoun
   const router = useRouter();
   const [blogId, setBlogId] = useState('');
   const [nickname, setNickname] = useState('');
-  const [msg, setMsg] = useState('');
+  // 메시지는 누른 버튼 바로 아래에 띄웁니다. (맨 위에 띄우면 휴대폰에서 안 보여요)
+  const [msg, setMsg] = useState<{ where: 'naver' | 'hellotalk'; text: string } | null>(null);
   // 네이버·헬로톡은 휴대폰 안에 저장합니다. (서버에 쓸 수 없는 곳에서도 동작하도록)
   const [local, setLocal] = useState<LocalAccounts>({});
 
@@ -24,23 +25,42 @@ export default function ConnectPanel({ accounts, ok, error }: { accounts: Accoun
 
   const find = (c: Channel) => accounts.find((a) => a.channel === c);
 
+  /** 주소를 통째로 붙여넣어도(예: https://blog.naver.com/abc123) 아이디만 뽑아냅니다. */
+  function cleanBlogId(input: string): string {
+    return input
+      .trim()
+      .replace(/^https?:\/\//i, '')
+      .replace(/^(m\.)?blog\.naver\.com\//i, '')
+      .split(/[/?#]/)[0]
+      .trim();
+  }
+
   function saveManual(channel: 'naver' | 'hellotalk') {
     if (channel === 'naver') {
-      const id = blogId.trim();
+      const id = cleanBlogId(blogId);
       if (!/^[A-Za-z0-9_-]{2,40}$/.test(id)) {
-        setMsg('⚠️ 블로그 아이디를 정확히 적어주세요. (blog.naver.com/ 뒤에 오는 영문·숫자 부분)');
+        setMsg({
+          where: 'naver',
+          text: '⚠️ 아이디는 영문·숫자로만 되어 있어요. blog.naver.com/ 뒤에 오는 부분을 적어주세요.',
+        });
         return;
       }
+      setBlogId(id); // 다듬어진 값으로 칸도 정리
       if (!saveNaver(id)) {
-        setMsg('⚠️ 휴대폰에 저장하지 못했습니다. 시크릿 모드라면 일반 창에서 열어주세요.');
+        setMsg({ where: 'naver', text: '⚠️ 휴대폰에 저장하지 못했습니다. 시크릿 모드라면 일반 창에서 열어주세요.' });
         return;
       }
-    } else if (!saveHellotalk(nickname)) {
-      setMsg('⚠️ 휴대폰에 저장하지 못했습니다. 시크릿 모드라면 일반 창에서 열어주세요.');
+      setLocal(getLocalAccounts());
+      setMsg({ where: 'naver', text: `✅ 저장 완료! (blog.naver.com/${id})` });
+      return;
+    }
+
+    if (!saveHellotalk(nickname)) {
+      setMsg({ where: 'hellotalk', text: '⚠️ 휴대폰에 저장하지 못했습니다. 시크릿 모드라면 일반 창에서 열어주세요.' });
       return;
     }
     setLocal(getLocalAccounts());
-    setMsg('✅ 저장했어요! 이제 [글쓰기]에서 고를 수 있습니다.');
+    setMsg({ where: 'hellotalk', text: '✅ 켰습니다! 이제 [글쓰기]에서 고를 수 있어요.' });
   }
 
   function forgetLocal(channel: 'naver' | 'hellotalk') {
@@ -49,7 +69,7 @@ export default function ConnectPanel({ accounts, ok, error }: { accounts: Accoun
     setLocal(getLocalAccounts());
     if (channel === 'naver') setBlogId('');
     else setNickname('');
-    setMsg('지웠습니다.');
+    setMsg({ where: channel, text: '지웠습니다.' });
   }
 
   async function disconnect(channel: Channel) {
@@ -65,7 +85,6 @@ export default function ConnectPanel({ accounts, ok, error }: { accounts: Accoun
 
       {ok && <div className="alert ok">✅ {ok === 'youtube' ? '유튜브' : '인스타그램'} 연결 완료!</div>}
       {error && <div className="alert bad">⚠️ {error}</div>}
-      {msg && <div className={`alert ${msg.startsWith('⚠️') ? 'bad' : 'ok'}`}>{msg}</div>}
 
       <div className="card">
         <h2>⚙️ 처음이신가요?</h2>
@@ -138,6 +157,11 @@ export default function ConnectPanel({ accounts, ok, error }: { accounts: Accoun
           <button className="btn-main" style={{ flex: 1 }} onClick={() => saveManual('naver')}>저장</button>
           {local.naver && <button className="btn-sub" onClick={() => forgetLocal('naver')}>지우기</button>}
         </div>
+        {msg?.where === 'naver' && (
+          <div className={`alert ${msg.text.startsWith('⚠️') ? 'bad' : 'ok'}`} style={{ marginTop: 10, marginBottom: 0 }}>
+            {msg.text}
+          </div>
+        )}
       </div>
 
       <div className="card">
@@ -156,6 +180,11 @@ export default function ConnectPanel({ accounts, ok, error }: { accounts: Accoun
           <button className="btn-main" style={{ flex: 1 }} onClick={() => saveManual('hellotalk')}>사용하기</button>
           {local.hellotalk && <button className="btn-sub" onClick={() => forgetLocal('hellotalk')}>지우기</button>}
         </div>
+        {msg?.where === 'hellotalk' && (
+          <div className={`alert ${msg.text.startsWith('⚠️') ? 'bad' : 'ok'}`} style={{ marginTop: 10, marginBottom: 0 }}>
+            {msg.text}
+          </div>
+        )}
       </div>
     </>
   );
