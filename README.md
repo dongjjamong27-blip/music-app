@@ -63,13 +63,14 @@
 
 | 이름 | 값 |
 |---|---|
-| `APP_URL` | 배포 후 받은 주소 (예: `https://my-post.vercel.app`) |
+| `APP_URL` | 배포 후 받은 주소 (예: `https://my-post.vercel.app`) — Vercel이면 안 넣어도 자동으로 찾습니다 |
 | `ENCRYPTION_KEY` | 아무 글자나 **32자 이상** 길게 (비밀 열쇠예요) |
 | `APP_PASSWORD` | 앱에 들어갈 때 쓸 내 비밀번호 |
 
 4. **Deploy** 를 누릅니다. 끝!
 
-> ⚠️ `APP_URL` 은 배포가 끝나야 주소를 알 수 있어요. 일단 아무 값이나 넣고 배포한 뒤, 주소가 나오면 고쳐서 다시 배포하세요.
+> 💡 `APP_URL` 은 배포가 끝나야 주소를 알 수 있죠? **Vercel에 올렸다면 비워두셔도 됩니다.**
+> 앱이 Vercel이 알려주는 진짜 주소를 스스로 찾아 씁니다. 나중에 내 도메인을 붙이면 그때 넣어주세요.
 
 ### 2단계. 휴대폰 홈 화면에 추가하기
 
@@ -180,6 +181,7 @@ src/
     ├ research.ts           🤖 검색해서 글 쓰기
     ├ store.ts              데이터 저장 (data/db.json)
     ├ crypto.ts             비밀 정보 잠그기
+    ├ appUrl.ts             내 앱 주소 찾기 (Vercel 자동 감지)
     └ publish.ts            전체 지휘
 ```
 
