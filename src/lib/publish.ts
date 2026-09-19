@@ -2,12 +2,11 @@ import type { Post } from './store';
 import { updateTarget } from './store';
 import { uploadToYoutube } from './youtube';
 import { postToInstagram } from './instagram';
+import { requireAppUrl } from './appUrl';
 
 /** 이 앱이 인터넷에서 어떤 주소로 열리는지 (인스타에 사진 주소를 알려줄 때 필요) */
 export function appUrl(): string {
-  const url = process.env.APP_URL ?? process.env.NEXT_PUBLIC_APP_URL;
-  if (!url) throw new Error('APP_URL 환경변수를 설정해주세요. (예: https://내앱주소.vercel.app)');
-  return url.replace(/\/+$/, '');
+  return requireAppUrl();
 }
 
 /**
