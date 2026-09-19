@@ -131,14 +131,26 @@ export async function postToInstagram(input: InstagramPostInput): Promise<string
   return linkData.permalink ?? `https://www.instagram.com/p/${publishedData.id}`;
 }
 
+/**
+ * 인스타가 영상을 다 변환할 때까지 기다립니다.
+ *
+ * Vercel 무료 플랜은 한 번에 60초까지만 일할 수 있어서, 그 안에서만 기다립니다.
+ * 시간이 모자라면 "조금 뒤 다시 눌러주세요"라고 분명히 알려줍니다.
+ * (이미 인스타에 올라가 있는 영상이라, 다시 시도하면 대개 바로 끝납니다.)
+ */
 async function waitUntilReady(containerId: string, token: string): Promise<void> {
-  const MAX_TRIES = 40;   // 5초 x 40 = 최대 약 3분 대기
-  for (let i = 0; i < MAX_TRIES; i++) {
+  const DEADLINE = Date.now() + 40_000; // 40초까지만 (나머지는 게시 요청에 씁니다)
+
+  while (Date.now() < DEADLINE) {
     const res = await fetch(`${GRAPH}/${containerId}?fields=status_code,status&access_token=${token}`);
     const data = (await res.json()) as { status_code?: string; status?: string };
     if (data.status_code === 'FINISHED') return;
     if (data.status_code === 'ERROR') throw new Error(`인스타 영상 변환 실패: ${data.status ?? '알 수 없는 오류'}`);
-    await new Promise((r) => setTimeout(r, 5000));
+    await new Promise((r) => setTimeout(r, 3000));
   }
-  throw new Error('인스타 영상 변환이 너무 오래 걸립니다. 잠시 뒤 다시 시도해주세요.');
+
+  throw new Error(
+    '인스타가 영상을 변환하는 데 시간이 더 필요합니다. 30초쯤 뒤에 [기록] 탭에서 다시 시도해주세요. ' +
+      '(영상이 길면 짧게 잘라서 올리면 빨라집니다)',
+  );
 }

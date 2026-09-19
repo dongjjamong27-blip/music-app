@@ -4,7 +4,8 @@ import { publishPost } from '@/lib/publish';
 import { isLoggedIn } from '@/lib/session';
 
 export const runtime = 'nodejs';
-export const maxDuration = 300;
+// Vercel 무료(Hobby) 플랜은 한 번에 최대 60초까지만 일할 수 있습니다.
+export const maxDuration = 60;
 
 const ALL: Channel[] = ['youtube', 'instagram', 'naver', 'hellotalk'];
 

@@ -3,7 +3,8 @@ import { makeDraft, isResearchEnabled, type DraftOptions } from '@/lib/research'
 import { isLoggedIn } from '@/lib/session';
 
 export const runtime = 'nodejs';
-export const maxDuration = 300;
+// Vercel 무료(Hobby) 플랜은 한 번에 최대 60초까지만 일할 수 있습니다.
+export const maxDuration = 60;
 
 export async function GET() {
   return NextResponse.json({ enabled: isResearchEnabled() });

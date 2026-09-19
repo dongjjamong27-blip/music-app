@@ -65,15 +65,16 @@ export async function makeDraft(opts: DraftOptions): Promise<Draft> {
     .join('\n');
 
   // 검색이 여러 번 돌기 때문에 시간이 걸립니다 → 스트리밍으로 받아서 타임아웃을 피합니다.
+  // 검색 횟수와 깊이는 Vercel 무료 플랜의 60초 안에 끝나도록 맞춰놨습니다.
   const stream = client.messages.stream({
     model: 'claude-opus-5',
-    max_tokens: 16000,
+    max_tokens: 8000,
     thinking: { type: 'adaptive' },
-    output_config: { effort: 'high' },
+    output_config: { effort: 'medium' },
     system,
     tools: [
-      { type: 'web_search_20260209', name: 'web_search', max_uses: 8 },
-      { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 8, max_content_tokens: 20000 },
+      { type: 'web_search_20260209', name: 'web_search', max_uses: 4 },
+      { type: 'web_fetch_20260209', name: 'web_fetch', max_uses: 4, max_content_tokens: 8000 },
     ],
     messages: [{ role: 'user', content: prompt }],
   });
