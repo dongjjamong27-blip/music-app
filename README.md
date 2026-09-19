@@ -207,10 +207,19 @@ npm install next@latest   # 또는 npm audit 로 확인
 
 > 💡 단서: `npm ci` 할 때 `npm warn deprecated next@...: This version has a security vulnerability` 경고가 나옵니다.
 
-### 2. 배포는 성공했는데 주소가 `404 NOT_FOUND`
+### 2. 배포는 성공(`Ready`)인데 모든 주소가 `404 NOT_FOUND`
 
-배포가 **Preview(연습용)** 로만 올라간 경우입니다.
+가장 흔한 원인은 Vercel이 **이 프로젝트를 Next.js로 인식하지 못한 것**입니다.
+(프로젝트를 만들 때 Next.js가 아닌 브랜치를 읽으면 `Framework Preset`이 `Other`로 잡힙니다)
+
+그러면 빌드는 되지만 **`public/` 폴더를 웹사이트로 내보내서** 모든 경로가 404가 됩니다.
+
+이 저장소는 `vercel.json`에 `"framework": "nextjs"` 를 박아둬서 자동으로 해결됩니다.
+그래도 안 되면 `Settings` → `Build and Deployment` → **`Framework Preset`** 을 `Next.js` 로 바꾸세요.
+
+**또 다른 원인:** 배포가 **Preview(연습용)** 로만 올라간 경우.
 `Settings` → `Git` → **`Production Branch`** 를 `main` 으로 바꾸고 **`Save`** 한 뒤, 다시 한 번 푸시하세요.
+(화면이 자동 번역돼 있으면 `Preview`가 **"시사"**, `Production`이 **"생산"** 으로 보입니다)
 
 ### 3. `maxDuration` / cron 관련 실패
 
