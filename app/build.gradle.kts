@@ -7,6 +7,9 @@ plugins {
 // GitHub 에서 빌드할 때마다 버전 번호가 1씩 올라간다. (앱 안 업데이트 확인에 쓰임)
 val buildNumber = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInt()
 
+// 도장 파일의 비밀번호. gradle.properties 에 적어 두고 여기서 읽는다.
+val keystoreSecret: String = providers.gradleProperty("autocheckStorePass").get()
+
 android {
     namespace = "com.autocheck.attendance"
     compileSdk = 35
@@ -19,11 +22,24 @@ android {
         versionName = "1.$buildNumber"
     }
 
+    // 항상 같은 도장(서명)으로 찍는다.
+    // 도장이 매번 바뀌면 "앱이 설치되지 않음" 이 나고, 앱 안 업데이트도 실패한다.
+    //
+    // 이 도장은 개인용 앱 전용이며 저장소에 함께 들어 있다. (README 참고)
+    // 앱스토어에 올릴 앱이라면 절대 이렇게 하면 안 된다.
+    signingConfigs {
+        create("fixed") {
+            storeFile = rootProject.file("keystore.jks")
+            storePassword = keystoreSecret
+            keyAlias = "autocheck"
+            keyPassword = keystoreSecret
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            // 서명 키가 없어도 받아서 설치할 수 있도록 debug 키로 서명한다.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("fixed")
         }
     }
 
