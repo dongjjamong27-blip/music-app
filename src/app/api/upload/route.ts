@@ -5,7 +5,8 @@ import crypto from 'node:crypto';
 import { isLoggedIn } from '@/lib/session';
 
 export const runtime = 'nodejs';
-export const maxDuration = 300;
+// Vercel 무료(Hobby) 플랜은 한 번에 최대 60초까지만 일할 수 있습니다.
+export const maxDuration = 60;
 
 const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const VIDEO_TYPES = new Set(['video/mp4', 'video/quicktime', 'video/x-m4v']);
