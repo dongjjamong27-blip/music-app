@@ -29,7 +29,7 @@
 
 | 무엇을 | 바로가기 |
 |---|---|
-| 0️⃣ 기본 브랜치를 `main`으로 바꾸기 | **[저장소 설정 열기](https://github.com/dongjjamong27-blip/music-app/settings)** → `Default branch` 연필 아이콘 → `main` |
+| 0️⃣ 배포할 브랜치를 `main`으로 | Vercel 프로젝트 → `Settings` → `Git` → **`Production Branch`** → `main` → `Save` |
 | 1️⃣ Vercel에 처음 올리기 | **[새 프로젝트 만들기](https://vercel.com/new)** → `music-app` 선택 |
 | 2️⃣ Vercel 환경변수 넣기 | **[Vercel 대시보드](https://vercel.com/dashboard)** → 프로젝트 → `Settings` → `Environment Variables` |
 | 3️⃣ 유튜브 기능 켜기 | **[YouTube Data API 켜기](https://console.cloud.google.com/apis/library/youtube.googleapis.com)** |
@@ -191,6 +191,34 @@ src/
     ├ appUrl.ts             내 앱 주소 찾기 (Vercel 자동 감지)
     └ publish.ts            전체 지휘
 ```
+
+---
+
+## 🚑 배포가 안 될 때 (실제로 겪은 것들)
+
+### 1. `Build Failed — Vulnerable version of Next.js detected`
+
+Vercel은 **보안 취약점이 있는 Next.js 버전은 빌드를 거부**합니다.
+내 컴퓨터에서는 잘 되는데 Vercel에서만 실패한다면 이걸 의심하세요.
+
+```bash
+npm install next@latest   # 또는 npm audit 로 확인
+```
+
+> 💡 단서: `npm ci` 할 때 `npm warn deprecated next@...: This version has a security vulnerability` 경고가 나옵니다.
+
+### 2. 배포는 성공했는데 주소가 `404 NOT_FOUND`
+
+배포가 **Preview(연습용)** 로만 올라간 경우입니다.
+`Settings` → `Git` → **`Production Branch`** 를 `main` 으로 바꾸고 **`Save`** 한 뒤, 다시 한 번 푸시하세요.
+
+### 3. `maxDuration` / cron 관련 실패
+
+무료(Hobby) 플랜 한도입니다.
+- 함수 실행 시간: **60초 이내**
+- 자동 예약(cron): **하루 1번**
+
+이 저장소는 이미 무료 플랜에 맞춰져 있습니다.
 
 ---
 
