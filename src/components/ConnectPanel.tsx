@@ -1,28 +1,55 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Channel } from '@/lib/store';
+import { getLocalAccounts, saveNaver, saveHellotalk, removeLocal, type LocalAccounts } from '@/lib/localStore';
 
 type AccountInfo = { channel: Channel; name: string; connectedAt: number; extra?: Record<string, string> };
 
 export default function ConnectPanel({ accounts, ok, error }: { accounts: AccountInfo[]; ok?: string; error?: string }) {
   const router = useRouter();
-  const [blogId, setBlogId] = useState(accounts.find((a) => a.channel === 'naver')?.extra?.blogId ?? '');
-  const [nickname, setNickname] = useState(accounts.find((a) => a.channel === 'hellotalk')?.name ?? '');
+  const [blogId, setBlogId] = useState('');
+  const [nickname, setNickname] = useState('');
   const [msg, setMsg] = useState('');
+  // 네이버·헬로톡은 휴대폰 안에 저장합니다. (서버에 쓸 수 없는 곳에서도 동작하도록)
+  const [local, setLocal] = useState<LocalAccounts>({});
+
+  useEffect(() => {
+    const saved = getLocalAccounts();
+    setLocal(saved);
+    setBlogId(saved.naver?.blogId ?? '');
+    setNickname(saved.hellotalk?.nickname ?? '');
+  }, []);
 
   const find = (c: Channel) => accounts.find((a) => a.channel === c);
 
-  async function saveManual(channel: 'naver' | 'hellotalk') {
-    const res = await fetch('/api/connect/manual', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ channel, blogId, nickname }),
-    });
-    const data = (await res.json()) as { error?: string };
-    setMsg(res.ok ? '저장했어요!' : (data.error ?? '저장에 실패했습니다.'));
-    router.refresh();
+  function saveManual(channel: 'naver' | 'hellotalk') {
+    if (channel === 'naver') {
+      const id = blogId.trim();
+      if (!/^[A-Za-z0-9_-]{2,40}$/.test(id)) {
+        setMsg('⚠️ 블로그 아이디를 정확히 적어주세요. (blog.naver.com/ 뒤에 오는 영문·숫자 부분)');
+        return;
+      }
+      if (!saveNaver(id)) {
+        setMsg('⚠️ 휴대폰에 저장하지 못했습니다. 시크릿 모드라면 일반 창에서 열어주세요.');
+        return;
+      }
+    } else if (!saveHellotalk(nickname)) {
+      setMsg('⚠️ 휴대폰에 저장하지 못했습니다. 시크릿 모드라면 일반 창에서 열어주세요.');
+      return;
+    }
+    setLocal(getLocalAccounts());
+    setMsg('✅ 저장했어요! 이제 [글쓰기]에서 고를 수 있습니다.');
+  }
+
+  function forgetLocal(channel: 'naver' | 'hellotalk') {
+    if (!confirm('정말 지울까요?')) return;
+    removeLocal(channel);
+    setLocal(getLocalAccounts());
+    if (channel === 'naver') setBlogId('');
+    else setNickname('');
+    setMsg('지웠습니다.');
   }
 
   async function disconnect(channel: Channel) {
@@ -38,7 +65,7 @@ export default function ConnectPanel({ accounts, ok, error }: { accounts: Accoun
 
       {ok && <div className="alert ok">✅ {ok === 'youtube' ? '유튜브' : '인스타그램'} 연결 완료!</div>}
       {error && <div className="alert bad">⚠️ {error}</div>}
-      {msg && <div className="alert ok">{msg}</div>}
+      {msg && <div className={`alert ${msg.startsWith('⚠️') ? 'bad' : 'ok'}`}>{msg}</div>}
 
       <div className="card">
         <h2>⚙️ 처음이신가요?</h2>
@@ -98,7 +125,7 @@ export default function ConnectPanel({ accounts, ok, error }: { accounts: Accoun
       <div className="card">
         <div className="row">
           <h2 style={{ margin: 0 }}>🟢 네이버 블로그</h2>
-          {find('naver') && <span className="badge manual">반자동</span>}
+          {local.naver && <span className="badge manual">반자동</span>}
         </div>
         <p className="note" style={{ marginTop: 0 }}>
           네이버는 자동 글쓰기 기능을 막아놔서 완전 자동은 안 돼요. 대신 아이디만 적어두면 글쓰기 화면을 바로 열어드려요.
@@ -109,14 +136,14 @@ export default function ConnectPanel({ accounts, ok, error }: { accounts: Accoun
         </div>
         <div className="btn-row">
           <button className="btn-main" style={{ flex: 1 }} onClick={() => saveManual('naver')}>저장</button>
-          {find('naver') && <button className="btn-sub" onClick={() => disconnect('naver')}>지우기</button>}
+          {local.naver && <button className="btn-sub" onClick={() => forgetLocal('naver')}>지우기</button>}
         </div>
       </div>
 
       <div className="card">
         <div className="row">
           <h2 style={{ margin: 0 }}>💬 헬로톡</h2>
-          {find('hellotalk') && <span className="badge manual">반자동</span>}
+          {local.hellotalk && <span className="badge manual">반자동</span>}
         </div>
         <p className="note" style={{ marginTop: 0 }}>
           헬로톡은 외부에서 글을 올리는 공식 방법이 없어요. 켜두면 [복사 + 앱 열기] 버튼이 생깁니다.
@@ -127,7 +154,7 @@ export default function ConnectPanel({ accounts, ok, error }: { accounts: Accoun
         </div>
         <div className="btn-row">
           <button className="btn-main" style={{ flex: 1 }} onClick={() => saveManual('hellotalk')}>사용하기</button>
-          {find('hellotalk') && <button className="btn-sub" onClick={() => disconnect('hellotalk')}>지우기</button>}
+          {local.hellotalk && <button className="btn-sub" onClick={() => forgetLocal('hellotalk')}>지우기</button>}
         </div>
       </div>
     </>

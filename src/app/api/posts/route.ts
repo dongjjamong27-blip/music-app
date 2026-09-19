@@ -36,18 +36,25 @@ export async function POST(req: Request) {
     status: channel === 'naver' || channel === 'hellotalk' ? 'manual' : scheduled ? 'scheduled' : 'draft',
   }));
 
-  const post = await createPost({
-    title,
-    body: text,
-    tags: (body.tags ?? []).map((t) => t.replace(/^#/, '').trim()).filter(Boolean).slice(0, 30),
-    mediaPath: body.mediaPath,
-    mediaType: body.mediaType,
-    scheduledAt: scheduled,
-    targets,
-  });
+  try {
+    const post = await createPost({
+      title,
+      body: text,
+      tags: (body.tags ?? []).map((t) => t.replace(/^#/, '').trim()).filter(Boolean).slice(0, 30),
+      mediaPath: body.mediaPath,
+      mediaType: body.mediaType,
+      scheduledAt: scheduled,
+      targets,
+    });
 
-  // 예약이 아니면 지금 바로 올립니다.
-  if (!scheduled) await publishPost(post);
+    // 예약이 아니면 지금 바로 올립니다.
+    if (!scheduled) await publishPost(post);
 
-  return NextResponse.json({ ok: true, postId: post.id, scheduled: Boolean(scheduled) });
+    return NextResponse.json({ ok: true, postId: post.id, scheduled: Boolean(scheduled) });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : '글을 저장하지 못했습니다.' },
+      { status: 500 },
+    );
+  }
 }

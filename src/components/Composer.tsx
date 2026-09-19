@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Channel } from '@/lib/store';
 import { naverPlan, hellotalkPlan, buildText, type HandoffPlan } from '@/lib/handoff';
 import HandoffButtons from './HandoffButtons';
 import TopicWriter from './TopicWriter';
+import { getLocalAccounts, addLocalPost, type LocalAccounts } from '@/lib/localStore';
 import type { Draft } from '@/lib/research';
 
 type AccountInfo = { channel: Channel; name: string; connectedAt: number; extra?: Record<string, string> };
@@ -33,8 +34,14 @@ export default function Composer({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: 'ok' | 'bad'; text: string } | null>(null);
 
-  const connected = useMemo(() => new Set(accounts.map((a) => a.channel)), [accounts]);
-  const blogId = accounts.find((a) => a.channel === 'naver')?.extra?.blogId;
+  // 네이버·헬로톡은 휴대폰에 저장돼 있고, 유튜브·인스타는 서버에 저장돼 있습니다.
+  const [local, setLocal] = useState<LocalAccounts>({});
+  useEffect(() => setLocal(getLocalAccounts()), []);
+
+  const serverConnected = useMemo(() => new Set(accounts.map((a) => a.channel)), [accounts]);
+  const isConnected = (c: Channel) =>
+    c === 'naver' ? Boolean(local.naver) : c === 'hellotalk' ? Boolean(local.hellotalk) : serverConnected.has(c);
+  const blogId = local.naver?.blogId;
 
   const tagList = tags.split(/[,\s]+/).map((t) => t.replace(/^#/, '').trim()).filter(Boolean);
 
@@ -64,8 +71,17 @@ export default function Composer({
   }
 
   async function submit() {
-    setBusy(true);
     setMessage(null);
+
+    // 네이버·헬로톡만 고른 경우: 서버가 할 일이 없습니다.
+    // 휴대폰에 기록만 남기고, 아래 [보내기] 버튼으로 마무리하면 됩니다.
+    if (autoPicked.length === 0) {
+      addLocalPost({ title, body, tags: tagList, channels: picked as ('naver' | 'hellotalk')[] });
+      setMessage({ kind: 'ok', text: '준비됐어요! 아래 버튼으로 보내시면 됩니다. (기록에도 남겼어요)' });
+      return;
+    }
+
+    setBusy(true);
     const res = await fetch('/api/posts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -94,7 +110,7 @@ export default function Composer({
   }
 
   const autoPicked = picked.filter((c) => c === 'youtube' || c === 'instagram');
-  const missingAccount = autoPicked.filter((c) => !connected.has(c));
+  const missingAccount = autoPicked.filter((c) => !serverConnected.has(c));
   const needsMedia = autoPicked.length > 0 && !media;
   const canSend = !busy && !uploading && picked.length > 0 && (title.trim() || body.trim()) && !needsMedia && missingAccount.length === 0;
 
@@ -152,7 +168,7 @@ export default function Composer({
               <span className="emoji">{c.emoji}</span>
               <span className="name">
                 {c.name}
-                <span className="tag">{connected.has(c.id) ? c.tag : '⚠️ 연결 필요'}</span>
+                <span className="tag">{isConnected(c.id) ? c.tag : '⚠️ 연결 필요'}</span>
               </span>
             </div>
           ))}
@@ -169,7 +185,15 @@ export default function Composer({
       </div>
 
       <button className="btn-main" disabled={!canSend} onClick={submit}>
-        {busy ? '보내는 중...' : needsMedia ? '사진이나 영상을 골라주세요' : scheduleAt ? '예약하기' : '지금 올리기'}
+        {busy
+          ? '보내는 중...'
+          : needsMedia
+            ? '사진이나 영상을 골라주세요'
+            : autoPicked.length === 0
+              ? '보낼 준비하기'
+              : scheduleAt
+                ? '예약하기'
+                : '지금 올리기'}
       </button>
 
       {plans.length > 0 && (

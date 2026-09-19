@@ -62,8 +62,23 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   );
 }
 
-export default function SetupGuide({ appUrl }: { appUrl: string }) {
+export default function SetupGuide({
+  appUrl,
+  passwordSet,
+  canSaveOnServer,
+}: {
+  appUrl: string;
+  passwordSet: boolean;
+  canSaveOnServer: boolean;
+}) {
   const [key, setKey] = useState('');
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  async function logout() {
+    setLoggingOut(true);
+    await fetch('/api/logout', { method: 'POST' });
+    location.href = '/';
+  }
 
   const base = appUrl || '아직-내주소를-모릅니다';
   const googleRedirect = `${base}/api/connect/google/callback`;
@@ -80,6 +95,52 @@ export default function SetupGuide({ appUrl }: { appUrl: string }) {
     <>
       <h1>⚙️ 처음 설정 도우미</h1>
       <p className="sub">버튼을 누르면 필요한 페이지가 바로 열려요. 순서대로만 따라오세요.</p>
+
+      <div className="card">
+        <h2>🔒 앱 잠금 (로그인)</h2>
+        {passwordSet ? (
+          <>
+            <p className="note" style={{ marginTop: 0 }}>
+              ✅ 비밀번호가 켜져 있습니다. 주소를 알아도 비밀번호 없이는 못 들어와요.
+            </p>
+            <button className="btn-sub" style={{ width: '100%' }} disabled={loggingOut} onClick={logout}>
+              {loggingOut ? '나가는 중...' : '로그아웃 (잠금 확인해보기)'}
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="note" style={{ marginTop: 0, color: 'var(--bad)' }}>
+              ⚠️ <b>지금은 잠금이 꺼져 있습니다.</b> 이 주소를 아는 사람은 누구나 들어와서
+              회원님 이름으로 글을 올릴 수 있어요.
+            </p>
+            <p className="note">
+              Vercel에 <b>APP_PASSWORD</b> 를 넣으면 바로 켜집니다. 아래 버튼으로 가서
+              <b> Key</b> 에 <code>APP_PASSWORD</code>, <b>Value</b> 에 원하는 비밀번호를 넣고 저장하세요.
+            </p>
+            <CopyRow label="환경변수 이름" value="APP_PASSWORD" />
+            <div className="btn-row">
+              <OpenButton href="https://vercel.com/dashboard">Vercel 열기</OpenButton>
+            </div>
+          </>
+        )}
+      </div>
+
+      {!canSaveOnServer && (
+        <div className="card">
+          <h2>💾 저장에 대해 (꼭 읽어주세요)</h2>
+          <p className="note" style={{ marginTop: 0 }}>
+            이 서버는 <b>파일을 저장할 수 없는 곳</b>이에요 (Vercel은 읽기 전용입니다).
+          </p>
+          <div style={{ fontSize: 14, lineHeight: 1.9 }}>
+            ✅ <b>네이버 · 헬로톡</b> — 휴대폰에 저장돼서 <b>정상 동작합니다</b><br />
+            ⚠️ <b>유튜브 · 인스타</b> — 계정 연결을 저장할 수 없어 <b>아직 사용할 수 없습니다</b>
+          </div>
+          <p className="note">
+            유튜브·인스타까지 쓰시려면 저장소를 붙여야 합니다.
+            필요하시면 말씀해주세요 — 무료로 붙이는 방법을 안내해드릴게요.
+          </p>
+        </div>
+      )}
 
       {!appUrl && (
         <div className="alert bad">
