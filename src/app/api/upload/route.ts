@@ -32,8 +32,24 @@ export async function POST(req: Request) {
   const name = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}.${ext}`;
 
   const dir = path.join(process.cwd(), 'public', 'uploads');
-  await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(path.join(dir, name), new Uint8Array(await file.arrayBuffer()));
+  try {
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, name), new Uint8Array(await file.arrayBuffer()));
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException)?.code;
+    if (code === 'EROFS' || code === 'EACCES' || code === 'EPERM') {
+      return NextResponse.json(
+        {
+          error:
+            '이 서버에는 사진·영상을 저장할 수 없습니다(읽기 전용). ' +
+            '네이버·헬로톡은 사진 없이도 글만 보낼 수 있어요. ' +
+            '유튜브·인스타를 쓰시려면 저장소를 붙여야 합니다.',
+        },
+        { status: 501 },
+      );
+    }
+    throw err;
+  }
 
   return NextResponse.json({ path: `/uploads/${name}`, type: isVideo ? 'video' : 'image' });
 }

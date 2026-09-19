@@ -59,11 +59,26 @@ async function read(): Promise<DB> {
 // 동시에 두 군데서 파일을 쓰면 내용이 깨지므로, 쓰기는 한 줄로 세워서 처리합니다.
 let writeQueue: Promise<unknown> = Promise.resolve();
 
+/** 이 서버에 파일을 쓸 수 없을 때(Vercel 등) 나오는 안내입니다. */
+export const READ_ONLY_MESSAGE =
+  '이 서버에는 저장할 수 없습니다(읽기 전용). 네이버·헬로톡은 휴대폰에 저장되니 그대로 쓰시면 되고, ' +
+  '유튜브·인스타를 쓰시려면 저장소를 따로 붙여야 합니다.';
+
+function isReadOnly(err: unknown): boolean {
+  const code = (err as NodeJS.ErrnoException)?.code;
+  return code === 'EROFS' || code === 'EACCES' || code === 'EPERM';
+}
+
 async function write(db: DB): Promise<void> {
-  await fs.mkdir(path.dirname(DB_PATH), { recursive: true });
   const tmp = `${DB_PATH}.${crypto.randomBytes(4).toString('hex')}.tmp`;
-  await fs.writeFile(tmp, JSON.stringify(db, null, 2), 'utf8');
-  await fs.rename(tmp, DB_PATH); // 갑자기 꺼져도 파일이 반쪽만 남지 않게
+  try {
+    await fs.mkdir(path.dirname(DB_PATH), { recursive: true });
+    await fs.writeFile(tmp, JSON.stringify(db, null, 2), 'utf8');
+    await fs.rename(tmp, DB_PATH); // 갑자기 꺼져도 파일이 반쪽만 남지 않게
+  } catch (err) {
+    if (isReadOnly(err)) throw new Error(READ_ONLY_MESSAGE);
+    throw err;
+  }
 }
 
 function queued<T>(fn: (db: DB) => Promise<T> | T): Promise<T> {
