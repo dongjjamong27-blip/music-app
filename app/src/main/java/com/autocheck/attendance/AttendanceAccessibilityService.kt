@@ -86,7 +86,7 @@ class AttendanceAccessibilityService : AccessibilityService() {
     fun findAndClick(keywords: List<String>): String? {
         val root = rootInActiveWindow ?: return null
         val found = ArrayList<Pair<AccessibilityNodeInfo, String>>()
-        collect(root, keywords, found, 0)
+        collect(root, keywords.map { toKeyword(it) }, found, 0)
 
         // 짧은 글자(정확히 "출석체크" 같은 것)를 먼저 누르도록 정렬한다.
         found.sortBy { nodeText(it.first).length }
@@ -97,10 +97,33 @@ class AttendanceAccessibilityService : AccessibilityService() {
         return null
     }
 
+    /**
+     * 찾을 글자 하나.
+     * exact = true 면 글자가 '똑같아야' 한다. (달력의 날짜 숫자처럼 짧은 글자용)
+     */
+    private data class Keyword(val raw: String, val text: String, val exact: Boolean)
+
+    /**
+     * 사용자가 적은 글자를 실제로 찾을 글자로 바꾼다.
+     * {오늘} -> 오늘 날짜 숫자 (예: 20). 숫자는 짧아서 정확히 일치할 때만 누른다.
+     */
+    private fun toKeyword(raw: String): Keyword {
+        val trimmed = raw.trim()
+        if (trimmed == "{오늘}") {
+            val day = java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_MONTH)
+            return Keyword(trimmed, day.toString(), exact = true)
+        }
+        // "=출석" 처럼 앞에 = 를 붙이면 똑같은 글자만 누른다.
+        if (trimmed.startsWith("=")) {
+            return Keyword(trimmed, trimmed.substring(1).trim(), exact = true)
+        }
+        return Keyword(trimmed, trimmed, exact = false)
+    }
+
     /** 화면 전체를 훑으면서 keywords 가 들어간 글자를 모은다. */
     private fun collect(
         node: AccessibilityNodeInfo?,
-        keywords: List<String>,
+        keywords: List<Keyword>,
         out: MutableList<Pair<AccessibilityNodeInfo, String>>,
         depth: Int
     ) {
@@ -108,8 +131,11 @@ class AttendanceAccessibilityService : AccessibilityService() {
         if (node.isVisibleToUser) {
             val text = nodeText(node)
             if (text.isNotEmpty()) {
-                val hit = keywords.firstOrNull { text.contains(it, ignoreCase = true) }
-                if (hit != null) out.add(node to hit)
+                val hit = keywords.firstOrNull { kw ->
+                    if (kw.exact) text.equals(kw.text, ignoreCase = true)
+                    else text.contains(kw.text, ignoreCase = true)
+                }
+                if (hit != null) out.add(node to hit.raw)
             }
         }
         for (i in 0 until node.childCount) {

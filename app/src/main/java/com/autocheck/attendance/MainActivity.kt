@@ -387,7 +387,7 @@ private fun AddTargetDialog(onDismiss: () -> Unit, onSave: (TargetApp) -> Unit) 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(picked!!.label, fontWeight = FontWeight.Bold)
                     Text(
-                        "그 앱 화면에 실제로 보이는 버튼 글자를 적어 주세요.\n여러 개면 쉼표(,)로 나눠 적으면 돼요.",
+                        "그 앱 화면에 실제로 보이는 버튼 글자를 적어 주세요.\n여러 개면 쉼표(,)로 나눠 적으면 돼요.\n\n달력에서 오늘 날짜를 눌러야 하면 {오늘} 이라고 적으세요.",
                         fontSize = 13.sp
                     )
                     OutlinedTextField(

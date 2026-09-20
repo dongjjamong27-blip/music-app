@@ -166,7 +166,8 @@ class AutoCheckService : Service() {
                 }
             }
             doneSteps.add(clicked)
-            Thread.sleep(1500)
+            // 다음 화면이 뜰 때까지 넉넉히 기다린다.
+            Thread.sleep(3000)
         }
         return ClickResult(true, "${doneSteps.joinToString(" > ")} 순서대로 눌렀어요.")
     }
