@@ -5,6 +5,7 @@ import type { Channel } from '@/lib/store';
 import { naverPlan, hellotalkPlan, buildText, HELLOTALK_LIMIT, type HandoffPlan } from '@/lib/handoff';
 import HandoffButtons from './HandoffButtons';
 import TopicWriter from './TopicWriter';
+import ImagePromptCard from './ImagePromptCard';
 import { getLocalAccounts, addLocalPost, type LocalAccounts } from '@/lib/localStore';
 import type { Draft } from '@/lib/research';
 
@@ -163,6 +164,8 @@ export default function Composer({
           <input id="tags" type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="음악 자작곡 일상" />
         </div>
       </div>
+
+      <ImagePromptCard title={title} />
 
       <div className="card">
         <h2>📎 사진 / 영상</h2>
