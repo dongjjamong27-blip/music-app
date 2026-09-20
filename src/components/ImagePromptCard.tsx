@@ -14,12 +14,18 @@ export default function ImagePromptCard({ title }: { title: string }) {
   const [sceneId, setSceneId] = useState(SCENES[0].id);
   const [subject, setSubject] = useState('');
   const [msg, setMsg] = useState('');
+  // 직접 고치신 문장입니다. 안 고치셨으면 null 이고, 이때는 자동으로 만든 문장을 씁니다.
+  const [edited, setEdited] = useState<string | null>(null);
 
   // 제목을 그대로 쓰되, 직접 고치셨으면 그걸 씁니다.
   const auto = useMemo(() => subjectFromTitle(title), [title]);
   const who = (subject.trim() || auto).trim();
   const scene = SCENES.find((s) => s.id === sceneId) ?? SCENES[0];
-  const prompt = who ? scene.build(who) : '';
+  const generated = who ? scene.build(who) : '';
+
+  // 고치신 게 있으면 그걸 우선합니다. 장면 버튼을 눌러도 애써 쓰신 문장이 사라지지 않도록요.
+  const prompt = edited ?? generated;
+  const isEdited = edited !== null && edited.trim() !== generated.trim();
 
   async function copy(text: string): Promise<boolean> {
     try {
@@ -86,8 +92,42 @@ export default function ImagePromptCard({ title }: { title: string }) {
       {prompt ? (
         <>
           <div className="field">
-            <label>만들어진 주문 문장</label>
-            <textarea readOnly value={prompt} style={{ minHeight: 96 }} onFocus={(e) => e.target.select()} />
+            <label>주문 문장 (마음대로 고치셔도 돼요)</label>
+            <textarea
+              value={prompt}
+              onChange={(e) => setEdited(e.target.value)}
+              style={{ minHeight: 132 }}
+              placeholder="어떤 그림을 원하는지 적어주세요."
+            />
+            <div className="btn-row" style={{ flexWrap: 'wrap', marginTop: 6 }}>
+              <button className="btn-sub" onClick={() => setEdited(null)} disabled={edited === null}>
+                ↩️ 처음 문장으로
+              </button>
+              <button
+                className="btn-sub"
+                onClick={() => setEdited(`${prompt.trim()} 사람 얼굴은 나오지 않게 해줘.`)}
+              >
+                + 얼굴 없이
+              </button>
+              <button
+                className="btn-sub"
+                onClick={() => setEdited(`${prompt.trim()} 눈이 내리는 겨울 분위기로.`)}
+              >
+                + 겨울로
+              </button>
+              <button
+                className="btn-sub"
+                onClick={() => setEdited(`${prompt.trim()} 저녁 무렵의 따뜻한 불빛으로.`)}
+              >
+                + 저녁으로
+              </button>
+            </div>
+            {isEdited && (
+              <p className="note" style={{ marginTop: 6 }}>
+                ✏️ 직접 고치신 문장을 쓰고 있어요. 장면 버튼을 눌러도 이 문장은 그대로 둡니다.
+                자동으로 만든 문장으로 돌아가려면 <b>[↩️ 처음 문장으로]</b> 를 누르세요.
+              </p>
+            )}
           </div>
 
           <div className="btn-row" style={{ flexWrap: 'wrap' }}>
