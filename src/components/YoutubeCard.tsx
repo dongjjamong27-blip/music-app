@@ -161,8 +161,16 @@ export default function YoutubeCard({
         </div>
       </div>
 
-      {!file && <p className="note">⬆️ 먼저 <b>📎 사진 / 영상</b> 에서 영상을 골라주세요.</p>}
       {file && <p className="note">올릴 영상: <b>{file.name}</b></p>}
+
+      {/* 버튼이 왜 안 켜지는지 반드시 알려줍니다. 말 없이 회색이면 답답하니까요. */}
+      {!busy && !ready && (
+        <p className="note" style={{ color: 'var(--bad)' }}>
+          올리기 전에 이것만 해주세요 —
+          {!title.trim() && <> ⬆️ <b>제목</b>을 적어주세요.</>}
+          {!file && <> ⬆️ <b>📎 사진 / 영상</b> 에서 <b>영상</b>을 골라주세요.</>}
+        </p>
+      )}
 
       <button className="btn-main" style={{ width: '100%' }} disabled={!ready || busy} onClick={upload}>
         {busy ? `올리는 중... ${percent}%` : '유튜브에 올리기'}
