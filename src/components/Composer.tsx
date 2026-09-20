@@ -50,7 +50,7 @@ export default function Composer({
   const isConnected = (c: Channel) =>
     c === 'naver' ? Boolean(local.naver)
       : c === 'hellotalk' ? Boolean(local.hellotalk)
-      : c === 'youtube' ? Boolean(googleClientId)
+      : c === 'youtube' ? true // 출입증 번호는 유튜브 칸에서 바로 넣을 수 있습니다
       : serverConnected.has(c);
   const blogId = local.naver?.blogId;
 

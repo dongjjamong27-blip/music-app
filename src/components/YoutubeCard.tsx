@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getYoutubeToken, uploadToYoutube, type Privacy } from '@/lib/youtubeBrowser';
-import { addLocalPost } from '@/lib/localStore';
+import { addLocalPost, getGoogleClientId, saveGoogleClientId, cleanClientId } from '@/lib/localStore';
 
 /**
  * 유튜브에 영상을 올리는 칸입니다.
@@ -22,7 +22,7 @@ const CATEGORY = [
 ];
 
 export default function YoutubeCard({
-  clientId,
+  clientId: fromServer,
   title,
   description,
   tags,
@@ -34,6 +34,29 @@ export default function YoutubeCard({
   tags: string[];
   file: File | null;
 }) {
+  // 출입증 번호는 휴대폰에 저장된 것을 먼저 씁니다.
+  // (Vercel 설정을 휴대폰으로 만지기가 너무 어려워서요)
+  const [saved, setSaved] = useState('');
+  const [typing, setTyping] = useState('');
+  const [savedMsg, setSavedMsg] = useState('');
+  useEffect(() => setSaved(getGoogleClientId()), []);
+  const clientId = saved || fromServer;
+
+  function save() {
+    const id = cleanClientId(typing);
+    if (!id.endsWith('.apps.googleusercontent.com')) {
+      setSavedMsg('⚠️ 클라이언트 ID가 아닌 것 같아요. ...apps.googleusercontent.com 으로 끝나야 합니다.');
+      return;
+    }
+    if (!saveGoogleClientId(id)) {
+      setSavedMsg('⚠️ 휴대폰에 저장하지 못했어요. 시크릿 모드라면 일반 모드에서 해주세요.');
+      return;
+    }
+    setSaved(id);
+    setTyping('');
+    setSavedMsg('✅ 저장했어요! 이제 바로 올리실 수 있습니다.');
+  }
+
   const [privacy, setPrivacy] = useState<Privacy>('unlisted');
   const [categoryId, setCategoryId] = useState('22');
   const [percent, setPercent] = useState<number | null>(null);
@@ -68,14 +91,29 @@ export default function YoutubeCard({
   if (!clientId) {
     return (
       <div className="card">
-        <h2>▶️ 유튜브</h2>
+        <h2>▶️ 유튜브 준비하기</h2>
         <p className="note" style={{ marginTop: 0 }}>
-          아직 준비가 안 됐어요. <b>[⚙️ 설정]</b> 탭에서 유튜브 준비를 먼저 해주세요.
-          (구글에서 출입증을 받아 <code>NEXT_PUBLIC_GOOGLE_CLIENT_ID</code> 에 넣으시면 됩니다)
+          구글에서 받은 <b>클라이언트 ID</b> 를 한 번만 넣어주시면 됩니다.
+          그다음부터는 바로 올릴 수 있어요.
         </p>
-        <a href="/setup" style={{ textDecoration: 'none' }}>
-          <button className="btn-sub" style={{ width: '100%' }}>설정하러 가기 →</button>
-        </a>
+        <div className="field">
+          <label>클라이언트 ID</label>
+          <input
+            type="text"
+            value={typing}
+            onChange={(e) => setTyping(e.target.value)}
+            placeholder="000000-xxxx.apps.googleusercontent.com"
+          />
+        </div>
+        <button className="btn-main" style={{ width: '100%' }} disabled={!typing.trim()} onClick={save}>
+          저장하기
+        </button>
+        {savedMsg && <p className="note">{savedMsg}</p>}
+        <p className="note">
+          🔒 이건 비밀번호가 아니라 <b>주소 같은 값</b>이라 휴대폰에 두어도 안전합니다.
+          (&quot;시크릿/보안 비밀번호&quot;는 이 앱에서 쓰지 않으니 넣지 마세요)
+          <br />어디서 받는지 모르시겠다면 <a href="/setup"><b>[⚙️ 설정]</b></a> 탭을 보세요.
+        </p>
       </div>
     );
   }
@@ -144,6 +182,18 @@ export default function YoutubeCard({
         </p>
       )}
       {error && <p className="note" style={{ color: 'var(--bad)' }}>⚠️ {error}</p>}
+
+      {saved && (
+        <p className="note" style={{ marginTop: 10 }}>
+          출입증 번호가 휴대폰에 저장돼 있어요.{' '}
+          <a
+            href="#"
+            onClick={(e) => { e.preventDefault(); saveGoogleClientId(''); setSaved(''); }}
+          >
+            바꾸기
+          </a>
+        </p>
+      )}
     </div>
   );
 }

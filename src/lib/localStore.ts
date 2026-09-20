@@ -12,6 +12,7 @@
  */
 
 const KEY_ACCOUNTS = 'one_post_local_accounts';
+const KEY_GOOGLE = 'one_post_google_client_id';
 const KEY_POSTS = 'one_post_local_posts';
 const MAX_POSTS = 100;
 
@@ -74,6 +75,34 @@ export function removeLocal(channel: LocalChannel): boolean {
   const accounts = getLocalAccounts();
   delete accounts[channel];
   return write(KEY_ACCOUNTS, accounts);
+}
+
+/* ---------------- 유튜브 출입증 번호 ---------------- */
+
+/**
+ * 구글에서 받은 "클라이언트 ID" 입니다.
+ *
+ * 원래는 서버 환경변수(Vercel)에 넣어야 하는데, 휴대폰으로 Vercel 설정을
+ * 만지는 게 너무 어려워서 휴대폰에 저장할 수 있게 했습니다.
+ * 이 값은 비밀번호가 아닙니다. 웹사이트 주소처럼 공개되는 값이라
+ * 휴대폰에 두어도 안전합니다. (비밀번호인 "시크릿"은 이 앱에서 쓰지 않습니다)
+ */
+export function getGoogleClientId(): string {
+  return read<string>(KEY_GOOGLE, '');
+}
+
+export function saveGoogleClientId(id: string): boolean {
+  return write(KEY_GOOGLE, cleanClientId(id));
+}
+
+export function clearGoogleClientId(): boolean {
+  return write(KEY_GOOGLE, '');
+}
+
+/** 앞뒤 공백이나 실수로 같이 복사된 글자를 정리합니다. */
+export function cleanClientId(input: string): string {
+  const found = input.match(/[0-9A-Za-z-_.]+\.apps\.googleusercontent\.com/);
+  return (found ? found[0] : input).trim();
 }
 
 /* ---------------- 보낸 글 기록 ---------------- */
