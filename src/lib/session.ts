@@ -10,7 +10,14 @@ import { safeEqual } from './crypto';
 const COOKIE = 'one_post_session';
 
 function secret(): string {
-  return process.env.ENCRYPTION_KEY ?? 'dev-only-secret';
+  const key = process.env.ENCRYPTION_KEY ?? 'dev-only-secret';
+  // 비밀번호를 바꾸면 예전에 로그인해둔 사람은 모두 자동으로 나가지도록,
+  // 서명에 지금 비밀번호도 함께 섞습니다. (비밀번호 자체는 저장되지 않습니다)
+  const fingerprint = crypto
+    .createHash('sha256')
+    .update(process.env.APP_PASSWORD ?? '')
+    .digest('hex');
+  return `${key}:${fingerprint}`;
 }
 
 function sign(value: string): string {

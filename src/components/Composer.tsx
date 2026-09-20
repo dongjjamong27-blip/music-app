@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import type { Channel } from '@/lib/store';
-import { naverPlan, hellotalkPlan, buildText, type HandoffPlan } from '@/lib/handoff';
+import { naverPlan, hellotalkPlan, buildText, HELLOTALK_LIMIT, type HandoffPlan } from '@/lib/handoff';
 import HandoffButtons from './HandoffButtons';
 import TopicWriter from './TopicWriter';
+import ImagePromptCard from './ImagePromptCard';
 import { getLocalAccounts, addLocalPost, type LocalAccounts } from '@/lib/localStore';
 import type { Draft } from '@/lib/research';
 
@@ -44,6 +45,11 @@ export default function Composer({
   const blogId = local.naver?.blogId;
 
   const tagList = tags.split(/[,\s]+/).map((t) => t.replace(/^#/, '').trim()).filter(Boolean);
+
+  // 헬로톡은 한 번에 2000자까지만 올라가서, 글자수를 미리 보여줍니다.
+  const fullText = buildText(title, body, tagList);
+  const hellotalkPicked = picked.includes('hellotalk');
+  const overHellotalk = fullText.length > HELLOTALK_LIMIT;
 
   const plans: HandoffPlan[] = [];
   if (picked.includes('naver')) plans.push(naverPlan(title, body, tagList, blogId));
@@ -144,11 +150,22 @@ export default function Composer({
           <textarea id="body" value={body} onChange={(e) => setBody(e.target.value)} placeholder="하고 싶은 이야기를 편하게 적어주세요." />
         </div>
 
+        {hellotalkPicked && (
+          <p className="note" style={{ marginTop: -6, color: overHellotalk ? 'var(--bad)' : undefined }}>
+            💬 헬로톡 글자수: <b>{fullText.length}</b> / {HELLOTALK_LIMIT}자
+            {overHellotalk
+              ? ` — 넘었어요! ${hellotalkPlan(title, body, tagList).parts.length}개로 나눠서 올려드릴게요.`
+              : ' ✅'}
+          </p>
+        )}
+
         <div className="field">
           <label htmlFor="tags">해시태그 (띄어쓰기로 구분)</label>
           <input id="tags" type="text" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="음악 자작곡 일상" />
         </div>
       </div>
+
+      <ImagePromptCard title={title} />
 
       <div className="card">
         <h2>📎 사진 / 영상</h2>
@@ -208,7 +225,7 @@ export default function Composer({
 
       <p className="note">
         미리보기: <br />
-        <span style={{ whiteSpace: 'pre-wrap' }}>{buildText(title, body, tagList) || '(아직 비어 있어요)'}</span>
+        <span style={{ whiteSpace: 'pre-wrap' }}>{fullText || '(아직 비어 있어요)'}</span>
       </p>
     </>
   );
