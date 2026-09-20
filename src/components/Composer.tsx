@@ -6,13 +6,14 @@ import { naverPlan, hellotalkPlan, buildText, HELLOTALK_LIMIT, type HandoffPlan 
 import HandoffButtons from './HandoffButtons';
 import TopicWriter from './TopicWriter';
 import ImagePromptCard from './ImagePromptCard';
+import YoutubeCard from './YoutubeCard';
 import { getLocalAccounts, addLocalPost, type LocalAccounts } from '@/lib/localStore';
 import type { Draft } from '@/lib/research';
 
 type AccountInfo = { channel: Channel; name: string; connectedAt: number; extra?: Record<string, string> };
 
 const CHANNELS: { id: Channel; emoji: string; name: string; tag: string }[] = [
-  { id: 'youtube', emoji: '▶️', name: '유튜브', tag: '자동 업로드 · 영상 필요' },
+  { id: 'youtube', emoji: '▶️', name: '유튜브', tag: '바로 올리기 · 영상 필요' },
   { id: 'instagram', emoji: '📸', name: '인스타그램', tag: '자동 업로드 · 사진/영상 필요' },
   { id: 'naver', emoji: '🟢', name: '네이버 블로그', tag: '버튼 1번 (반자동)' },
   { id: 'hellotalk', emoji: '💬', name: '헬로톡', tag: '버튼 1번 (반자동)' },
@@ -42,9 +43,15 @@ export default function Composer({
   const [local, setLocal] = useState<LocalAccounts>({});
   useEffect(() => setLocal(getLocalAccounts()), []);
 
+  // 유튜브는 휴대폰이 직접 올리므로, 구글 출입증 번호만 있으면 준비된 것입니다.
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? '';
+
   const serverConnected = useMemo(() => new Set(accounts.map((a) => a.channel)), [accounts]);
   const isConnected = (c: Channel) =>
-    c === 'naver' ? Boolean(local.naver) : c === 'hellotalk' ? Boolean(local.hellotalk) : serverConnected.has(c);
+    c === 'naver' ? Boolean(local.naver)
+      : c === 'hellotalk' ? Boolean(local.hellotalk)
+      : c === 'youtube' ? Boolean(googleClientId)
+      : serverConnected.has(c);
   const blogId = local.naver?.blogId;
 
   // 고른 사진을 화면에 보여주기 위한 임시 주소입니다. 다 쓰면 반납해야 메모리가 샙니다.
@@ -144,7 +151,10 @@ export default function Composer({
     });
   }
 
-  const autoPicked = picked.filter((c) => c === 'youtube' || c === 'instagram');
+  // 서버가 해야 하는 일은 이제 인스타뿐입니다.
+  // (유튜브는 아래 [▶️ 유튜브] 칸에서 휴대폰이 직접 올립니다)
+  const autoPicked = picked.filter((c) => c === 'instagram');
+  const videoFile = files.find((f) => f.type.startsWith('video')) ?? null;
   const missingAccount = autoPicked.filter((c) => !serverConnected.has(c));
   const needsMedia = autoPicked.length > 0 && files.length === 0 && !media;
   const canSend = !busy && !uploading && picked.length > 0 && (title.trim() || body.trim()) && !needsMedia && missingAccount.length === 0;
@@ -251,6 +261,16 @@ export default function Composer({
           <p className="note">⚠️ 먼저 [연결] 탭에서 계정을 연결해주세요.</p>
         )}
       </div>
+
+      {picked.includes('youtube') && (
+        <YoutubeCard
+          clientId={googleClientId}
+          title={title}
+          description={buildText('', body, tagList)}
+          tags={tagList}
+          file={videoFile}
+        />
+      )}
 
       <div className="card">
         <h2>⏰ 예약하기 (안 쓰면 바로 올라감)</h2>

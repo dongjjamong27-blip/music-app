@@ -156,27 +156,40 @@ export default function SetupGuide({
         {key && <div style={{ marginTop: 12 }}><CopyRow label="ENCRYPTION_KEY (복사해서 Vercel에 붙여넣기)" value={key} /></div>}
       </Step>
 
-      <Step n={2} title="▶️ 유튜브 자동 업로드 준비">
-        <p className="note" style={{ marginTop: 0 }}>① 먼저 유튜브 기능을 켭니다. (파란 버튼 → [사용] 클릭)</p>
+      <Step n={2} title="▶️ 유튜브에 바로 올리기 준비">
+        <p className="note" style={{ marginTop: 0 }}>
+          휴대폰이 유튜브로 <b>직접</b> 올립니다. 영상 크기 제한이 없어요.
+          아래 세 가지만 해두시면 됩니다.
+        </p>
+
+        <p className="note">① 먼저 유튜브 기능을 켭니다. (파란 버튼 → [사용] 클릭)</p>
         <div className="btn-row">
           <OpenButton href="https://console.cloud.google.com/apis/library/youtube.googleapis.com">
             유튜브 API 켜러 가기
           </OpenButton>
         </div>
 
-        <p className="note">② 그다음 &quot;출입증&quot;을 만듭니다. 유형은 <b>웹 애플리케이션</b>을 고르세요.</p>
+        <p className="note">
+          ② &quot;출입증&quot;을 만듭니다. 유형은 <b>웹 애플리케이션</b>을 고르세요.
+          그리고 <b>&quot;승인된 자바스크립트 원본&quot;</b> 칸에 아래 주소를 붙여넣으세요.
+          (리디렉션 URI 칸은 비워두셔도 됩니다)
+        </p>
         <div className="btn-row">
           <OpenButton href="https://console.cloud.google.com/apis/credentials/oauthclient">
             출입증 만들러 가기
           </OpenButton>
         </div>
+        <CopyRow label="승인된 자바스크립트 원본" value={base} />
 
-        <p className="note">③ &quot;승인된 리디렉션 URI&quot; 칸에 아래 주소를 그대로 붙여넣으세요.</p>
-        <CopyRow label="승인된 리디렉션 URI" value={googleRedirect} />
-
-        <p className="note">④ 나온 <b>클라이언트 ID</b>와 <b>보안 비밀번호</b>를 Vercel 환경변수에 넣습니다.</p>
-        <CopyRow label="환경변수 이름 1" value="GOOGLE_CLIENT_ID" />
-        <CopyRow label="환경변수 이름 2" value="GOOGLE_CLIENT_SECRET" />
+        <p className="note">
+          ③ 나온 <b>클라이언트 ID</b>를 Vercel 환경변수에 넣습니다.
+          이름을 <b>정확히</b> 아래처럼 적어주세요. (<code>NEXT_PUBLIC_</code> 이 꼭 붙어야 합니다)
+        </p>
+        <CopyRow label="환경변수 이름" value="NEXT_PUBLIC_GOOGLE_CLIENT_ID" />
+        <p className="note">
+          값에는 <code>...apps.googleusercontent.com</code> 으로 끝나는 긴 글자를 넣으시면 됩니다.
+          <b> 보안 비밀번호(시크릿)는 넣지 않으셔도 됩니다.</b>
+        </p>
       </Step>
 
       <Step n={3} title="📸 인스타 자동 등록 준비">
