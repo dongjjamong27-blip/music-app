@@ -30,6 +30,9 @@ export default function Composer({
   const [tags, setTags] = useState('');
   const [picked, setPicked] = useState<Channel[]>([]);
   const [media, setMedia] = useState<{ path: string; type: 'image' | 'video' } | null>(null);
+  // 고른 사진은 일단 휴대폰 안에만 둡니다.
+  // (Vercel 서버는 파일을 저장할 수 없어서, 꼭 필요할 때만 서버로 보냅니다)
+  const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [scheduleAt, setScheduleAt] = useState('');
   const [busy, setBusy] = useState(false);
@@ -43,6 +46,16 @@ export default function Composer({
   const isConnected = (c: Channel) =>
     c === 'naver' ? Boolean(local.naver) : c === 'hellotalk' ? Boolean(local.hellotalk) : serverConnected.has(c);
   const blogId = local.naver?.blogId;
+
+  // 고른 사진을 화면에 보여주기 위한 임시 주소입니다. 다 쓰면 반납해야 메모리가 샙니다.
+  const previews = useMemo(
+    () => files.map((f) => ({
+      url: URL.createObjectURL(f),
+      type: f.type.startsWith('video') ? ('video' as const) : ('image' as const),
+    })),
+    [files],
+  );
+  useEffect(() => () => previews.forEach((p) => URL.revokeObjectURL(p.url)), [previews]);
 
   const tagList = tags.split(/[,\s]+/).map((t) => t.replace(/^#/, '').trim()).filter(Boolean);
 
@@ -59,11 +72,21 @@ export default function Composer({
     setPicked((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
   }
 
-  async function pickFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
+  function pickFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(e.target.files ?? []);
+    if (picked.length === 0) return;
     setMessage(null);
+    setFiles((prev) => [...prev, ...picked].slice(0, 10)); // 너무 많으면 휴대폰이 느려져요
+    e.target.value = ''; // 같은 사진을 다시 고를 수 있게 비워둡니다
+  }
+
+  function removeFile(index: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  /** 유튜브·인스타는 서버가 파일을 가지고 있어야 해서, 그때만 올립니다. */
+  async function uploadForAuto(file: File) {
+    setUploading(true);
     const form = new FormData();
     form.append('file', file);
     const res = await fetch('/api/upload', { method: 'POST', body: form });
@@ -71,9 +94,11 @@ export default function Composer({
     const data = (await res.json()) as { path?: string; type?: 'image' | 'video'; error?: string };
     if (!res.ok || !data.path) {
       setMessage({ kind: 'bad', text: data.error ?? '파일 올리기에 실패했습니다.' });
-      return;
+      return null;
     }
-    setMedia({ path: data.path, type: data.type ?? 'image' });
+    const saved = { path: data.path, type: data.type ?? ('image' as const) };
+    setMedia(saved);
+    return saved;
   }
 
   async function submit() {
@@ -87,6 +112,10 @@ export default function Composer({
       return;
     }
 
+    // 유튜브·인스타는 서버에 파일이 있어야 합니다.
+    const saved = media ?? (files[0] ? await uploadForAuto(files[0]) : null);
+    if (!saved) return;
+
     setBusy(true);
     const res = await fetch('/api/posts', {
       method: 'POST',
@@ -96,8 +125,8 @@ export default function Composer({
         body,
         tags: tagList,
         channels: picked,
-        mediaPath: media?.path,
-        mediaType: media?.type,
+        mediaPath: saved.path,
+        mediaType: saved.type,
         scheduledAt: scheduleAt ? new Date(scheduleAt).getTime() : null,
       }),
     });
@@ -117,7 +146,7 @@ export default function Composer({
 
   const autoPicked = picked.filter((c) => c === 'youtube' || c === 'instagram');
   const missingAccount = autoPicked.filter((c) => !serverConnected.has(c));
-  const needsMedia = autoPicked.length > 0 && !media;
+  const needsMedia = autoPicked.length > 0 && files.length === 0 && !media;
   const canSend = !busy && !uploading && picked.length > 0 && (title.trim() || body.trim()) && !needsMedia && missingAccount.length === 0;
 
   return (
@@ -169,12 +198,40 @@ export default function Composer({
 
       <div className="card">
         <h2>📎 사진 / 영상</h2>
-        <input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime" onChange={pickFile} />
+        <p className="note" style={{ marginTop: 0 }}>
+          여러 장 한 번에 고르셔도 됩니다. 사진은 <b>휴대폰 안에만</b> 있다가,
+          아래 <b>[사진과 함께 보내기]</b> 를 누르면 글과 같이 넘어가요.
+        </p>
+        <input
+          type="file"
+          multiple
+          accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime"
+          onChange={pickFiles}
+        />
         {uploading && <p className="note">올리는 중... 잠시만요.</p>}
-        {media && (media.type === 'image'
-          ? <img className="preview" src={media.path} alt="미리보기" />
-          : <video className="preview" src={media.path} controls playsInline />)}
-        <p className="note">유튜브는 영상, 인스타는 사진이나 영상이 꼭 필요해요.</p>
+
+        {previews.length > 0 && (
+          <div className="btn-row" style={{ flexWrap: 'wrap', marginTop: 10 }}>
+            {previews.map((p, i) => (
+              <div key={p.url} style={{ position: 'relative', width: 96 }}>
+                {p.type === 'image'
+                  ? <img src={p.url} alt={`사진 ${i + 1}`} style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 10 }} />
+                  : <video src={p.url} style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 10 }} muted playsInline />}
+                <button
+                  className="btn-sub"
+                  style={{ position: 'absolute', top: -6, right: -6, padding: '2px 8px', lineHeight: 1.4 }}
+                  onClick={() => removeFile(i)}
+                  aria-label={`${i + 1}번째 사진 빼기`}
+                >
+                  ✕
+                </button>
+                <p className="note" style={{ textAlign: 'center', margin: 2 }}>{i + 1}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <p className="note">유튜브는 영상, 인스타는 사진이나 영상이 꼭 필요해요. (첫 번째 것을 씁니다)</p>
       </div>
 
       <div className="card">
@@ -218,8 +275,9 @@ export default function Composer({
           <h2>🟢 네이버 · 헬로톡은 여기서 마무리</h2>
           <p className="note" style={{ marginTop: 0 }}>
             이 두 곳은 자동 등록이 막혀 있어서, 아래 버튼을 누르면 내용이 복사되고 앱이 열려요. 붙여넣기만 하면 끝!
+            사진을 고르셨다면 <b>[사진과 함께 보내기]</b> 로 글과 사진을 한 번에 넘길 수 있어요.
           </p>
-          <HandoffButtons plans={plans} />
+          <HandoffButtons plans={plans} files={files} />
         </div>
       )}
 
