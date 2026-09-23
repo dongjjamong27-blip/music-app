@@ -125,3 +125,14 @@ https://github.com/dongjjamong27-blip/music-app/releases/latest
 개인이 자기 폰에만 설치하는 앱이라 이렇게 했습니다.
 **앱스토어에 올릴 앱이라면 서명 키를 저장소에 넣으면 안 됩니다.**
 그 경우 GitHub Secrets 에 넣고 workflow 에서 꺼내 쓰세요.
+
+---
+
+## 🎹 웹 엘렉톤 (전자 오르간)
+
+위/아래 건반 + 발 건반 + 리듬 + 자동 베이스 + 설정 저장(1~8).
+
+- **안드로이드**: https://github.com/dongjjamong27-blip/music-app/releases/latest 에서 `electone.apk` 설치
+- **아이폰**: 저장소 Settings → Pages → Branch 를 `claude/yamaha-electronic-piano-ro5l8c` / `(root)` 로 저장 →
+  Safari 로 `https://dongjjamong27-blip.github.io/music-app/electone/` 열기 → 공유 → **홈 화면에 추가**
+- 파일: `electone/index.html` (웹), `electone-app/` (안드로이드 앱 껍데기)
