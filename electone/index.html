@@ -7,6 +7,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="엘렉톤">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#111111">
 <title>웹 엘렉톤</title>
 <style>
 :root{
@@ -379,6 +383,9 @@ for(let i=1;i<=8;i++){
   document.getElementById('regs').appendChild(b);
   const b2=document.createElement('button'); b2.className='btn'; b2.textContent=i; b2.onclick=()=>{ if(memMode) memBtn.click(); b.click(); }; document.getElementById('regs2').appendChild(b2);
 }
+
+// 홈 화면 앱: 인터넷 없이도 열리게 파일 저장 (웹사이트로 열었을 때만)
+if('serviceWorker' in navigator && location.protocol==='https:'){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 </script>
 </body>
 </html>

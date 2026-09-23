@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "AutoAttendance"
 include(":app")
+include(":electone-app")
