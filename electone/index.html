@@ -2,7 +2,11 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="엘렉톤">
 <title>웹 엘렉톤</title>
 <style>
 :root{
@@ -15,7 +19,7 @@
 }
 :root[data-theme="dark"]{ --bg:#1b1d22; --panel:#2a2d34; --panel2:#33363f; --text:#eef0f4; --muted:#9aa0ab; }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:manipulation;-webkit-text-size-adjust:100%;padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left)}
 header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:linear-gradient(90deg,#111,#2b2b2b);color:#fff}
 header h1{margin:0;font-size:18px;letter-spacing:2px}
 header h1 b{color:var(--accent)}
@@ -55,8 +59,8 @@ input[type=range]{width:110px;accent-color:var(--accent)}
 .kb-only .kname{margin-top:2px;font-size:11px}
 .kb-only .kname i,.kb-only main>.hint{display:none}
 .kb-only .kbd-wrap{margin-top:2px;padding:3px}
-.kb-only .kbd{height:calc((100vh - 170px)*0.38)}
-.kb-only .kbd.pedal{height:calc((100vh - 170px)*0.24)}
+.kb-only .kbd{height:calc((100vh - 170px)*0.38);height:calc((100dvh - 170px)*0.38)}
+.kb-only .kbd.pedal{height:calc((100vh - 170px)*0.24);height:calc((100dvh - 170px)*0.24)}
 .kb-only .quick .btn{padding:6px 10px}
 .kb-only .quick{display:flex}
 .quick{display:none;gap:6px;margin-bottom:6px;flex-wrap:wrap}
@@ -118,7 +122,7 @@ input[type=range]{width:110px;accent-color:var(--accent)}
     <div class="kname" style="color:var(--pedal)">PEDAL KEYBOARD <i>20건반 · 발로 치는 베이스</i></div>
     <div class="kbd-wrap"><div class="kbd pedal" id="kPedal" style="--c:var(--pedal)"></div></div>
   </div>
-  <p class="hint">※ 휴대폰은 가로로 돌리면 더 편해요. 건반은 옆으로 밀어서 넘길 수 있어요. 소리가 안 나면 화면을 한 번 눌러 주세요.</p>
+  <p class="hint">※ 휴대폰은 가로로 돌리면 더 편해요. 아이폰은 Safari 공유 버튼 → '홈 화면에 추가'하면 앱처럼 전체 화면으로 쓸 수 있어요. 건반은 옆으로 밀어서 넘길 수 있어요. 소리가 안 나면 화면을 한 번 눌러 주세요.</p>
 </main>
 
 <script>
@@ -126,6 +130,8 @@ input[type=range]{width:110px;accent-color:var(--accent)}
 let ctx, master, revSend, dry;
 function audio(){
   if(ctx) { if(ctx.state==='suspended') ctx.resume(); return ctx; }
+  // 아이폰: 무음 스위치가 켜져 있어도 소리 나게 (iOS 16.4 이상)
+  try{ if(navigator.audioSession) navigator.audioSession.type='playback'; }catch(e){}
   ctx = new (window.AudioContext||window.webkitAudioContext)();
   master = ctx.createGain(); master.gain.value = val('expr');
   const comp = ctx.createDynamicsCompressor();
@@ -138,6 +144,14 @@ function audio(){
   revSend.connect(conv); conv.connect(master);
   return ctx;
 }
+// 아이폰은 손가락을 뗄 때(터치 끝) 소리 권한이 풀려서, 첫 터치에 무음 소리를 한 번 재생
+function unlock(){
+  audio(); const b=ctx.createBuffer(1,1,22050), s=ctx.createBufferSource(); s.buffer=b; s.connect(ctx.destination); s.start(0);
+  ctx.resume(); if(ctx.state==='running'){ ['touchend','click','keydown'].forEach(t=>removeEventListener(t,unlock,true)); }
+}
+['touchend','click','keydown'].forEach(t=>addEventListener(t,unlock,true));
+// 다른 앱 갔다 오면 소리 다시 켜기
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden && ctx && ctx.state!=='running') ctx.resume(); });
 const val = id => document.getElementById(id).value/100;
 const freq = m => 440*Math.pow(2,(m-69)/12);
 
