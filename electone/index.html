@@ -48,6 +48,19 @@ input[type=range]{width:110px;accent-color:var(--accent)}
 .reg .btn{min-width:40px;font-weight:700}
 .hint{font-size:12px;color:var(--muted);line-height:1.5}
 .beat{display:flex;gap:4px}
+.kb-only .ctl{display:none}
+.kb-only header{padding:4px 12px}
+.kb-only main{padding:4px 8px}
+.kb-only .panel{padding:6px;margin:0}
+.kb-only .kname{margin-top:2px;font-size:11px}
+.kb-only .kname i,.kb-only main>.hint{display:none}
+.kb-only .kbd-wrap{margin-top:2px;padding:3px}
+.kb-only .kbd{height:calc((100vh - 170px)*0.38)}
+.kb-only .kbd.pedal{height:calc((100vh - 170px)*0.24)}
+.kb-only .quick .btn{padding:6px 10px}
+.kb-only .quick{display:flex}
+.quick{display:none;gap:6px;margin-bottom:6px;flex-wrap:wrap}
+@media (max-width:600px){ header h1{font-size:14px;letter-spacing:1px} .lcd{min-width:0;font-size:11px} }
 .beat i{width:10px;height:10px;border-radius:50%;background:#444;display:block}
 .beat i.lit{background:var(--led);box-shadow:0 0 6px var(--led)}
 </style>
@@ -55,11 +68,12 @@ input[type=range]{width:110px;accent-color:var(--accent)}
 <body>
 <header>
   <h1><b>●</b> WEB ELECTONE</h1>
+  <button class="btn" id="kbOnly" style="--c:var(--accent)">🎹 건반만</button>
   <div class="lcd" id="lcd">READY</div>
 </header>
-<main>
+<main id="main">
   <!-- 음색(보이스) -->
-  <div class="panel">
+  <div class="panel ctl">
     <div class="grid">
       <div class="part" style="--c:var(--upper)"><p class="sec-title">UPPER 음색 (위 건반)</p><div class="row" id="vUpper"></div>
         <div class="row" style="margin-top:6px"><label class="sl">볼륨<input type="range" min="0" max="100" value="80" id="volUpper"></label><label class="sl">비브라토<input type="checkbox" id="vibUpper"></label></div></div>
@@ -71,7 +85,7 @@ input[type=range]{width:110px;accent-color:var(--accent)}
   </div>
 
   <!-- 리듬 + 마스터 -->
-  <div class="panel">
+  <div class="panel ctl">
     <div class="grid">
       <div><p class="sec-title">RHYTHM 리듬</p><div class="row" id="rhythms"></div>
         <div class="row" style="margin-top:8px">
@@ -96,6 +110,7 @@ input[type=range]{width:110px;accent-color:var(--accent)}
 
   <!-- 건반 -->
   <div class="panel">
+    <div class="quick"><button class="btn big play" id="playBtn2">▶ / ■ 리듬</button><div class="row reg" id="regs2"></div></div>
     <div class="kname" style="color:var(--upper)">UPPER KEYBOARD <i>49건반 · PC 키보드 Z~M / Q~I 로도 연주</i></div>
     <div class="kbd-wrap"><div class="kbd" id="kUpper" style="--c:var(--upper)"></div></div>
     <div class="kname" style="color:var(--lower)">LOWER KEYBOARD <i>49건반 · 왼손 반주(화음)</i></div>
@@ -201,17 +216,20 @@ function noiseBurst(c,t,dur,gain){
 
 // ===== 건반 그리기 =====
 const held = {upper:new Set(), lower:new Set(), pedal:new Set()};
-function buildKeyboard(el, part, start, count, ww){
+function buildKeyboard(el, part, start, count, getW){
   const isBlack = n => [1,3,6,8,10].includes(n%12);
-  let x = 0; const keys = [];
+  const keys = [];
   for(let m=start; m<start+count; m++){
-    const k = document.createElement('div'); k.dataset.m = m;
-    if(isBlack(m)){ k.className='key b'; k.style.left = (x - ww*0.32)+'px'; k.style.width = (ww*0.64)+'px'; }
-    else { k.className='key w'; k.style.left = x+'px'; k.style.width = ww+'px'; x += ww;
-      if(m%12===0){ const s=document.createElement('span'); s.textContent='C'+(Math.floor(m/12)-1); k.appendChild(s);} }
+    const k = document.createElement('div'); k.dataset.m = m; k.className = isBlack(m)?'key b':'key w';
+    if(m%12===0){ const s=document.createElement('span'); s.textContent='C'+(Math.floor(m/12)-1); k.appendChild(s);}
     el.appendChild(k); keys.push(k);
   }
-  el.style.width = x+'px';
+  // 화면 크기에 맞춰 건반 위치 다시 계산
+  const layout = ()=>{ const ww=getW(); let x=0;
+    keys.forEach(k=>{ if(k.classList.contains('b')){ k.style.left=(x-ww*0.32)+'px'; k.style.width=(ww*0.64)+'px'; }
+      else { k.style.left=x+'px'; k.style.width=ww+'px'; x+=ww; } });
+    el.style.width = x+'px'; };
+  layout(); addEventListener('resize', layout);
   const pointers = {};
   const press = (m)=>{ const k=el.querySelector(`[data-m="${m}"]`); k&&k.classList.add('down'); held[part].add(m); noteOn(part,m); show(part,m); };
   const lift  = (m)=>{ const k=el.querySelector(`[data-m="${m}"]`); k&&k.classList.remove('down'); held[part].delete(m); noteOff(part,m); };
@@ -229,9 +247,9 @@ function lcd(t){ document.getElementById('lcd').textContent = t; }
 // 화면 폭에 맞춰 흰 건반 너비 계산 (너무 좁으면 옆으로 밀기)
 const fit=(id,whites,min)=>Math.max(min,Math.floor((document.getElementById(id).parentNode.clientWidth-12)/whites));
 const KB = {
-  upper: buildKeyboard(document.getElementById('kUpper'),'upper',48,49,fit('kUpper',29,26)), // C3~C7
-  lower: buildKeyboard(document.getElementById('kLower'),'lower',36,49,fit('kLower',29,26)), // C2~C6
-  pedal: buildKeyboard(document.getElementById('kPedal'),'pedal',24,20,Math.min(70,fit('kPedal',12,40))), // C1~G2
+  upper: buildKeyboard(document.getElementById('kUpper'),'upper',48,49,()=>fit('kUpper',29,26)), // C3~C7
+  lower: buildKeyboard(document.getElementById('kLower'),'lower',36,49,()=>fit('kLower',29,26)), // C2~C6
+  pedal: buildKeyboard(document.getElementById('kPedal'),'pedal',24,20,()=>Math.min(70,fit('kPedal',12,40))), // C1~G2
 };
 
 // PC 키보드로 위 건반 연주
@@ -306,6 +324,9 @@ playBtn.onclick=()=>{
   if(playing){ step=0; nextTime=ctx.currentTime+.05; timer=setInterval(schedule,25); lcd('♪ '+state.rhythm); }
   else { clearInterval(timer); lightBeat(-1); lcd('STOP'); }
 };
+document.getElementById('playBtn2').onclick=()=>playBtn.click();
+const kbOnly=document.getElementById('kbOnly');
+kbOnly.onclick=()=>{ const on=document.body.classList.toggle('kb-only'); kbOnly.classList.toggle('on',on); dispatchEvent(new Event('resize')); };
 document.getElementById('tempo').oninput=e=>{ document.getElementById('tempoVal').textContent=e.target.value; };
 const abcBtn = document.getElementById('abcBtn');
 abcBtn.onclick=()=>{ state.abc=!state.abc; abcBtn.classList.toggle('on',state.abc); lcd('A.B.C. '+(state.abc?'ON':'OFF')); };
@@ -342,6 +363,7 @@ for(let i=1;i<=8;i++){
     document.querySelectorAll('#regs .btn').forEach(x=>x.classList.toggle('on',x===b));
   };
   document.getElementById('regs').appendChild(b);
+  const b2=document.createElement('button'); b2.className='btn'; b2.textContent=i; b2.onclick=()=>{ if(memMode) memBtn.click(); b.click(); }; document.getElementById('regs2').appendChild(b2);
 }
 </script>
 </body>
