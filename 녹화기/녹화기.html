@@ -29,6 +29,13 @@
     <li>다 끝나면 <b>녹화 끝</b> → <b>영상 저장</b>.</li>
     <li>저장한 파일을 <b>유튜브 스튜디오 → 만들기 → 동영상 업로드</b>에 그대로 올리면 끝!</li>
   </ol>
+  <div id="phone" style="display:none;background:#fff3cd;padding:12px;border-radius:8px;margin-bottom:12px">
+    <b>📱 휴대폰은 이 페이지로 녹화할 수 없어요.</b> 휴대폰 기본 "화면 녹화"를 쓰세요!<br><br>
+    <b>갤럭시:</b> 화면 위에서 두 번 쓸어내리기 → <b>화면 녹화</b> → 소리 설정 <b>"미디어 소리 및 마이크"</b> → 녹화 시작 → 챗GPT 열기<br><br>
+    <b>아이폰:</b> 오른쪽 위에서 쓸어내리기 → <b>⏺ 녹화 버튼 꾹 누르기</b> → <b>마이크 켬</b> → 녹화 시작 → 챗GPT 열기<br>
+    (녹화 버튼이 없으면: 설정 → 제어 센터 → 화면 기록 추가)<br><br>
+    끝나면 영상이 <b>갤러리/사진</b>에 저장돼요 → 유튜브 앱 <b>＋ → 동영상</b>으로 바로 업로드!
+  </div>
   <label><input type="checkbox" id="mic" checked> 내 목소리(마이크)도 같이 녹음</label>
   <div>
     <button id="start">● 녹화 시작</button>
@@ -41,6 +48,10 @@
 
 <script>
 const $ = id => document.getElementById(id);
+if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+  $('phone').style.display = 'block';
+  $('start').disabled = true;
+}
 let recorder, chunks = [], streams = [], audioCtx, timer;
 
 $('start').onclick = async () => {
