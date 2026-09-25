@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>대화 녹화기</title>
+<style>
+  body { font-family: sans-serif; background:#f4f4f7; margin:0; padding:16px; color:#222; }
+  .box { max-width:720px; margin:auto; background:#fff; border-radius:12px; padding:20px; box-shadow:0 2px 8px #0001; }
+  h1 { margin-top:0; font-size:24px; }
+  button { font-size:18px; padding:12px 20px; border:0; border-radius:8px; cursor:pointer; margin:4px 4px 4px 0; }
+  #start { background:#e53935; color:#fff; }
+  #stop { background:#555; color:#fff; }
+  button:disabled { opacity:.4; cursor:default; }
+  video { width:100%; margin-top:12px; border-radius:8px; background:#000; }
+  #status { font-weight:bold; margin:12px 0; }
+  #download { display:none; font-size:18px; margin-top:8px; }
+  ol { line-height:1.7; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>🎥 챗GPT 대화 녹화기</h1>
+  <ol>
+    <li>이 파일을 <b>크롬</b> 또는 <b>엣지</b>로 열어요.</li>
+    <li>다른 탭에 챗GPT를 열어 두어요.</li>
+    <li>아래 <b>녹화 시작</b>을 누르고 <b>챗GPT 탭</b>을 골라요.</li>
+    <li>꼭 <b>"탭 오디오도 공유"</b>에 체크! (챗GPT 목소리 녹음)</li>
+    <li>다 끝나면 <b>녹화 끝</b> → <b>영상 저장</b>.</li>
+  </ol>
+  <label><input type="checkbox" id="mic" checked> 내 목소리(마이크)도 같이 녹음</label>
+  <div>
+    <button id="start">● 녹화 시작</button>
+    <button id="stop" disabled>■ 녹화 끝</button>
+  </div>
+  <div id="status">준비됐어요</div>
+  <video id="preview" autoplay muted playsinline></video>
+  <a id="download">💾 영상 저장하기</a>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let recorder, chunks = [], streams = [], audioCtx, timer;
+
+$('start').onclick = async () => {
+  try {
+    // 1. 화면 + 탭 소리
+    const screen = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    streams.push(screen);
+
+    // 2. 소리 섞기 (탭 소리 + 마이크)
+    audioCtx = new AudioContext();
+    const mix = audioCtx.createMediaStreamDestination();
+    if (screen.getAudioTracks().length) {
+      audioCtx.createMediaStreamSource(screen).connect(mix);
+    }
+    if ($('mic').checked) {
+      try {
+        const mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true } });
+        streams.push(mic);
+        audioCtx.createMediaStreamSource(mic).connect(mix);
+      } catch (e) { alert('마이크를 못 켰어요. 화면과 탭 소리만 녹음할게요.'); }
+    }
+
+    const final = new MediaStream([...screen.getVideoTracks(), ...mix.stream.getAudioTracks()]);
+    $('preview').srcObject = final;
+
+    // 3. 녹화 시작
+    const type = ['video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm']
+      .find(t => MediaRecorder.isTypeSupported(t));
+    recorder = new MediaRecorder(final, { mimeType: type });
+    chunks = [];
+    recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
+    recorder.onstop = save;
+    recorder.start(1000);
+
+    // 화면 공유를 브라우저에서 멈춰도 녹화 끝
+    screen.getVideoTracks()[0].onended = stop;
+
+    const t0 = Date.now();
+    timer = setInterval(() => {
+      const s = Math.floor((Date.now() - t0) / 1000);
+      $('status').textContent = `🔴 녹화 중 ${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+    }, 500);
+    if (!screen.getAudioTracks().length) alert('탭 소리가 공유되지 않았어요. 챗GPT 목소리를 녹음하려면 "탭 오디오 공유"에 체크하고 다시 시작하세요.');
+    $('start').disabled = true; $('stop').disabled = false;
+    $('download').style.display = 'none';
+  } catch (e) {
+    $('status').textContent = '취소됐어요';
+  }
+};
+
+function stop() {
+  if (recorder && recorder.state !== 'inactive') recorder.stop();
+  streams.forEach(s => s.getTracks().forEach(t => t.stop()));
+  streams = [];
+  clearInterval(timer);
+  if (audioCtx) audioCtx.close();
+  $('start').disabled = false; $('stop').disabled = true;
+}
+$('stop').onclick = stop;
+
+function save() {
+  const blob = new Blob(chunks, { type: recorder.mimeType });
+  const ext = recorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
+  const a = $('download');
+  a.href = URL.createObjectURL(blob);
+  a.download = `챗GPT대화_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.${ext}`;
+  a.style.display = 'inline-block';
+  $('preview').srcObject = null;
+  $('preview').src = a.href; $('preview').muted = false; $('preview').controls = true;
+  $('status').textContent = '✅ 녹화 끝! 아래 버튼으로 저장하세요';
+}
+</script>
+</body>
+</html>
