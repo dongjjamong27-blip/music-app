@@ -27,6 +27,7 @@
     <li>아래 <b>녹화 시작</b>을 누르고 <b>챗GPT 탭</b>을 골라요.</li>
     <li>꼭 <b>"탭 오디오도 공유"</b>에 체크! (챗GPT 목소리 녹음)</li>
     <li>다 끝나면 <b>녹화 끝</b> → <b>영상 저장</b>.</li>
+    <li>저장한 파일을 <b>유튜브 스튜디오 → 만들기 → 동영상 업로드</b>에 그대로 올리면 끝!</li>
   </ol>
   <label><input type="checkbox" id="mic" checked> 내 목소리(마이크)도 같이 녹음</label>
   <div>
@@ -45,7 +46,10 @@ let recorder, chunks = [], streams = [], audioCtx, timer;
 $('start').onclick = async () => {
   try {
     // 1. 화면 + 탭 소리
-    const screen = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    const screen = await navigator.mediaDevices.getDisplayMedia({
+      video: { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
+      audio: true
+    });
     streams.push(screen);
 
     // 2. 소리 섞기 (탭 소리 + 마이크)
@@ -66,9 +70,15 @@ $('start').onclick = async () => {
     $('preview').srcObject = final;
 
     // 3. 녹화 시작
-    const type = ['video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm']
+    // 유튜브용: MP4(H.264+AAC)를 먼저 시도, 안 되면 WebM (유튜브는 둘 다 올라감)
+    const type = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4',
+                  'video/webm;codecs=vp9,opus', 'video/webm']
       .find(t => MediaRecorder.isTypeSupported(t));
-    recorder = new MediaRecorder(final, { mimeType: type });
+    recorder = new MediaRecorder(final, {
+      mimeType: type,
+      videoBitsPerSecond: 8000000, // 유튜브 1080p 권장 화질
+      audioBitsPerSecond: 192000
+    });
     chunks = [];
     recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
     recorder.onstop = save;
