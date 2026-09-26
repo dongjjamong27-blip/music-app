@@ -4,9 +4,53 @@ import { useEffect, useState } from 'react';
 import type { HandoffPlan } from '@/lib/handoff';
 
 /**
- * 네이버 블로그 / 헬로톡으로 "내용 복사 + 앱 열기"를 한 번에 해주는 버튼입니다.
- * 헬로톡처럼 글자수 제한이 있는 곳은 여러 조각으로 나눠서 하나씩 복사해줍니다.
+ * 네이버 블로그 / 헬로톡으로 내용을 넘기는 버튼들입니다.
+ *
+ * 왜 "복사"와 "앱 열기"를 나눴나요?
+ *  복사하자마자 앱을 열면, 복사가 실패해도 화면이 넘어가 버려서
+ *  붙여넣을 때가 되어서야 "아무것도 없네" 하고 알게 됩니다.
+ *  그래서 ① 복사 → 눈으로 확인 → ② 앱 열기 순서로 바꿨습니다.
+ *
+ * 그리고 복사는 브라우저마다 막히는 경우가 있어서,
+ * 아래에 내용 상자를 항상 띄워둡니다. 버튼이 안 되면 직접 길게 눌러 복사하시면 됩니다.
  */
+
+/** 옛 방식(execCommand)을 먼저 씁니다. 휴대폰 브라우저에서 제일 잘 통합니다. */
+function copyOldWay(text: string): boolean {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '0';
+    ta.style.left = '0';
+    ta.style.width = '1px';
+    ta.style.height = '1px';
+    ta.style.padding = '0';
+    ta.style.border = 'none';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, text.length); // 아이폰은 이게 있어야 선택됩니다
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+async function copyText(text: string): Promise<boolean> {
+  if (copyOldWay(text)) return true;
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default function HandoffButtons({
   plans,
   files = [],
@@ -14,42 +58,39 @@ export default function HandoffButtons({
   plans: HandoffPlan[];
   files?: File[];
 }) {
-  const [done, setDone] = useState<Record<string, string>>({});
+  // 채널별로 "몇 번째 조각을 복사했는지"와 안내 문구를 따로 들고 있습니다.
+  const [msg, setMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
+  const [part, setPart] = useState<Record<string, number>>({});
 
-  // 휴대폰이 "글 + 사진"을 한 번에 다른 앱으로 넘겨줄 수 있는지 확인합니다.
-  // (안드로이드 크롬은 대부분 됩니다. 컴퓨터 브라우저는 보통 안 됩니다)
   const [canShareFiles, setCanShareFiles] = useState(false);
+  const [canShareText, setCanShareText] = useState(false);
   useEffect(() => {
     try {
+      setCanShareText(typeof navigator.share === 'function');
       setCanShareFiles(files.length > 0 && Boolean(navigator.canShare?.({ files })));
     } catch {
+      setCanShareText(false);
       setCanShareFiles(false);
     }
   }, [files]);
 
-  async function copy(text: string): Promise<boolean> {
-    try {
-      await navigator.clipboard.writeText(text);
-      return true;
-    } catch {
-      // 오래된 브라우저용 예비 방법
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.style.position = 'fixed';
-      ta.style.opacity = '0';
-      document.body.appendChild(ta);
-      ta.select();
-      const ok = document.execCommand('copy');
-      document.body.removeChild(ta);
-      return ok;
-    }
+  function textOf(plan: HandoffPlan, index: number): string {
+    return plan.parts[index] ?? plan.text;
   }
 
-  async function go(plan: HandoffPlan) {
-    const copied = await copy(plan.parts[0] ?? plan.text);
-    setDone((d) => ({ ...d, [plan.channel]: copied ? plan.hint : '복사가 안 됐어요. 아래 내용을 직접 길게 눌러 복사해주세요.' }));
+  async function doCopy(plan: HandoffPlan, index: number) {
+    const ok = await copyText(textOf(plan, index));
+    setPart((p) => ({ ...p, [plan.channel]: index }));
+    setMsg((m) => ({
+      ...m,
+      [plan.channel]: ok
+        ? { ok: true, text: `복사됐어요! 이제 아래 [${plan.label} 열기] 를 누르고 붙여넣으세요.` }
+        : { ok: false, text: '이 브라우저는 복사 버튼이 막혀 있어요. 아래 상자를 길게 눌러 직접 복사해주세요.' },
+    }));
+  }
 
-    // 앱을 열어봅니다. 앱이 없으면 1.2초 뒤 웹페이지로 넘어갑니다.
+  function openApp(plan: HandoffPlan) {
+    // 앱이 없으면 1.2초 뒤 웹페이지로 넘어갑니다.
     const started = Date.now();
     location.href = plan.appUrl;
     setTimeout(() => {
@@ -57,90 +98,97 @@ export default function HandoffButtons({
     }, 1200);
   }
 
-  async function copyPart(plan: HandoffPlan, index: number) {
-    const ok = await copy(plan.parts[index]);
-    setDone((d) => ({
-      ...d,
-      [plan.channel]: ok
-        ? `${index + 1}번째 조각을 복사했어요. 헬로톡에 붙여넣고 올리세요.`
-        : '복사가 안 됐어요. 아래 미리보기에서 직접 복사해주세요.',
-    }));
-  }
-
-  /** 글과 사진을 한 번에 다른 앱으로 넘깁니다. (휴대폰 공유창이 뜹니다) */
-  async function shareWithFiles(plan: HandoffPlan) {
-    const text = plan.parts[0] ?? plan.text;
-    // 공유창에서 글이 빠지는 앱도 있어서, 붙여넣을 수 있게 복사도 해둡니다.
-    await copy(text);
+  /** 공유창으로 넘기면 클립보드를 쓰지 않아서, 복사가 막힌 기기에서도 됩니다. */
+  async function share(plan: HandoffPlan, index: number, withFiles: boolean) {
+    const text = textOf(plan, index);
     try {
-      await navigator.share({ text, files });
-      setDone((d) => ({ ...d, [plan.channel]: '넘겼어요! 글이 안 들어갔으면 길게 눌러 붙여넣기 하시면 됩니다.' }));
+      await navigator.share(withFiles ? { text, files } : { text });
+      setMsg((m) => ({ ...m, [plan.channel]: { ok: true, text: '넘겼어요!' } }));
     } catch {
       /* 사용자가 취소한 경우 - 무시 */
     }
   }
 
-  async function share(plan: HandoffPlan) {
-    const text = plan.parts[0] ?? plan.text;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: plan.label, text });
-        return;
-      } catch {
-        /* 사용자가 취소한 경우 - 무시 */
-      }
-    }
-    await copy(text);
-    setDone((d) => ({ ...d, [plan.channel]: '내용을 복사했어요. 앱을 열고 붙여넣어 주세요.' }));
-  }
-
   return (
     <>
-      {plans.map((plan) => (
-        <div key={plan.channel} style={{ marginBottom: 14 }}>
-          {canShareFiles && (
+      {plans.map((plan) => {
+        const index = part[plan.channel] ?? 0;
+        const info = msg[plan.channel];
+        const multi = plan.parts.length > 1;
+
+        return (
+          <div key={plan.channel} style={{ marginBottom: 18 }}>
+            <p className="note" style={{ marginTop: 0, marginBottom: 6 }}>
+              <b>{plan.label}</b> — ① 복사 → ② 앱 열기 → 붙여넣기
+            </p>
+
+            {multi && (
+              <>
+                <p className="note" style={{ marginBottom: 6 }}>
+                  ✂️ 글이 {plan.limit}자를 넘어서 <b>{plan.parts.length}개</b>로 나눴어요.
+                  하나씩 복사해서 차례로 올려주세요.
+                </p>
+                <div className="btn-row" style={{ flexWrap: 'wrap' }}>
+                  {plan.parts.map((p, i) => (
+                    <button
+                      key={i}
+                      className={i === index ? 'btn-main' : 'btn-sub'}
+                      onClick={() => doCopy(plan, i)}
+                    >
+                      {i + 1}번째 복사 ({p.length}자)
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {!multi && (
+              <button className="btn-main" style={{ width: '100%' }} onClick={() => doCopy(plan, 0)}>
+                ① 내용 복사하기
+              </button>
+            )}
+
             <button
               className="btn-main"
-              style={{ width: '100%', marginBottom: 8 }}
-              onClick={() => shareWithFiles(plan)}
+              style={{ width: '100%', marginTop: 8 }}
+              onClick={() => openApp(plan)}
             >
-              📷 사진과 함께 {plan.label}에 보내기
+              ② {plan.label} 열기
             </button>
-          )}
 
-          <div className="btn-row">
-            <button className={canShareFiles ? 'btn-sub' : 'btn-main'} style={{ flex: 1 }} onClick={() => go(plan)}>
-              {plan.label} 열기 + 복사
-            </button>
-            <button className="btn-sub" onClick={() => share(plan)}>글만 공유</button>
-          </div>
+            {(canShareText || canShareFiles) && (
+              <button
+                className="btn-sub"
+                style={{ width: '100%', marginTop: 8 }}
+                onClick={() => share(plan, index, canShareFiles)}
+              >
+                {canShareFiles ? '📷 사진과 함께 공유로 보내기' : '공유로 보내기 (복사가 안 될 때)'}
+              </button>
+            )}
 
-          {files.length > 0 && !canShareFiles && (
-            <p className="note">
-              이 브라우저는 사진을 한 번에 넘기지 못해요. 글을 붙여넣은 뒤
-              <b> {plan.label} 앱에서 사진을 직접 고르시면</b> 됩니다.
-            </p>
-          )}
-
-          {plan.parts.length > 1 && (
-            <>
-              <p className="note" style={{ marginBottom: 6 }}>
-                ✂️ 글이 {plan.limit}자를 넘어서 <b>{plan.parts.length}개</b>로 나눴어요.
-                하나씩 복사해서 차례로 올려주세요.
+            {info && (
+              <p className="note" style={{ color: info.ok ? undefined : 'var(--bad)' }}>
+                {info.ok ? '✅' : '⚠️'} {info.text}
               </p>
-              <div className="btn-row" style={{ flexWrap: 'wrap' }}>
-                {plan.parts.map((part, i) => (
-                  <button key={i} className="btn-sub" onClick={() => copyPart(plan, i)}>
-                    {i + 1}번째 복사 ({part.length}자)
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
+            )}
 
-          {done[plan.channel] && <p className="note">✅ {done[plan.channel]}</p>}
-        </div>
-      ))}
+            <details style={{ marginTop: 8 }}>
+              <summary className="note" style={{ cursor: 'pointer' }}>
+                복사가 안 되면 여기를 눌러 직접 복사하세요
+              </summary>
+              <textarea
+                readOnly
+                value={textOf(plan, index)}
+                style={{ minHeight: 160, marginTop: 6 }}
+                onFocus={(e) => e.currentTarget.select()}
+              />
+              <p className="note">
+                상자를 길게 눌러 <b>전체 선택 → 복사</b> 하시면 됩니다.
+              </p>
+            </details>
+          </div>
+        );
+      })}
     </>
   );
 }
