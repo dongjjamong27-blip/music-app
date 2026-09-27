@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>AI 대화 녹화기</title>
+<style>
+  * { box-sizing:border-box; }
+  body { font-family:sans-serif; margin:0; padding:12px; background:#f4f4f7; color:#222; }
+  .box { max-width:520px; margin:auto; }
+  h1 { font-size:20px; margin:4px 0 10px; }
+  input, button, select { font-size:16px; padding:10px; border-radius:8px; border:1px solid #ccc; }
+  button { border:0; background:#10a37f; color:#fff; cursor:pointer; }
+  button:disabled { opacity:.4; }
+  .row { display:flex; gap:6px; margin:6px 0; }
+  .row input { flex:1; min-width:0; }
+  #rec { background:#e53935; width:100%; font-size:18px; }
+  #talk { background:#1e88e5; }
+  canvas { width:100%; border-radius:10px; background:#000; display:block; margin-top:8px; }
+  #status { font-weight:bold; margin:8px 0; }
+  #download { display:none; font-size:18px; margin:8px 0; }
+  details { background:#fff; padding:10px; border-radius:8px; margin-bottom:8px; }
+  small { color:#666; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>📱 AI 대화 녹화기 (아이폰·안드로이드·컴퓨터)</h1>
+
+  <details id="setup">
+    <summary><b>⚙️ 처음 한 번 설정</b></summary>
+    <p><small>OpenAI API 키가 필요해요 (platform.openai.com → API keys). 키는 이 휴대폰에만 저장돼요.</small></p>
+    <div class="row"><input id="key" type="password" placeholder="sk-로 시작하는 키"></div>
+    <div class="row"><input id="model" value="gpt-4o-mini"><select id="voice">
+      <option>alloy</option><option>nova</option><option>shimmer</option><option>echo</option><option>onyx</option><option>fable</option>
+    </select></div>
+    <small>위 칸: 대화 모델 이름 / 옆: AI 목소리</small>
+  </details>
+
+  <button id="rec">● 녹화 시작</button>
+  <div id="status">설정 후 녹화 시작을 누르세요</div>
+
+  <div class="row">
+    <input id="msg" placeholder="AI에게 할 말 입력" disabled>
+    <button id="send" disabled>보내기</button>
+  </div>
+  <button id="talk" disabled style="width:100%">🎤 꾹 누르고 말하기</button>
+
+  <canvas id="cv" width="1080" height="1920"></canvas>
+  <a id="download">💾 영상 저장하기</a>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const store = { get:k=>{try{return localStorage.getItem(k)}catch(e){return null}}, set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}} };
+['key','model','voice'].forEach(k => { const v = store.get(k); if (v) $(k).value = v; $(k).onchange = () => store.set(k, $(k).value); });
+if (!store.get('key')) $('setup').open = true;
+
+const cv = $('cv'), ctx = cv.getContext('2d');
+let chat = [], recording = false, recorder, chunks = [], audioCtx, recDest, micStream, t0, busy = false;
+
+// ---------- 화면 그리기 (대화 말풍선) ----------
+function wrap(text, maxW) {
+  const lines = [];
+  text.split('\n').forEach(p => {
+    let line = '';
+    for (const ch of p) {
+      if (ctx.measureText(line + ch).width > maxW) { lines.push(line); line = ch; }
+      else line += ch;
+    }
+    lines.push(line);
+  });
+  return lines;
+}
+function draw() {
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 1080, 1920);
+  ctx.fillStyle = '#10a37f'; ctx.fillRect(0, 0, 1080, 140);
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 54px sans-serif'; ctx.fillText('🤖 AI와 대화', 40, 92);
+  if (recording) {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    ctx.fillStyle = '#ff5252'; ctx.beginPath(); ctx.arc(830, 72, 16, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = '44px sans-serif';
+    ctx.fillText(`${String(s/60|0).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`, 860, 88);
+  }
+  // 아래에서 위로 말풍선 쌓기
+  ctx.font = '46px sans-serif';
+  let y = 1880;
+  for (let i = chat.length - 1; i >= 0 && y > 160; i--) {
+    const m = chat[i], me = m.role === 'user';
+    const lines = wrap(m.content || '…', 760);
+    const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + 60;
+    const h = lines.length * 62 + 40;
+    y -= h;
+    const x = me ? 1040 - w : 40;
+    ctx.fillStyle = me ? '#10a37f' : '#eeeeee';
+    ctx.beginPath(); ctx.roundRect(x, y, w, h, 30); ctx.fill();
+    ctx.fillStyle = me ? '#fff' : '#222';
+    lines.forEach((l, j) => ctx.fillText(l, x + 30, y + 68 + j * 62));
+    y -= 30;
+  }
+  requestAnimationFrame(draw);
+}
+draw();
+
+// ---------- 녹화 ----------
+$('rec').onclick = async () => {
+  if (recording) return stopRec();
+  if (!$('key').value) { $('setup').open = true; return alert('먼저 API 키를 넣어주세요'); }
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    await audioCtx.resume();
+    recDest = audioCtx.createMediaStreamDestination();
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true } });
+    audioCtx.createMediaStreamSource(micStream).connect(recDest); // 내 목소리 → 녹음(스피커로는 X)
+
+    const stream = new MediaStream([...cv.captureStream(30).getVideoTracks(), ...recDest.stream.getAudioTracks()]);
+    const type = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm']
+      .find(t => MediaRecorder.isTypeSupported(t));
+    recorder = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: 6000000, audioBitsPerSecond: 128000 });
+    chunks = [];
+    recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
+    recorder.onstop = saveRec;
+    recorder.start(1000);
+
+    chat = []; recording = true; t0 = Date.now();
+    $('rec').textContent = '■ 녹화 끝'; $('download').style.display = 'none';
+    ['msg','send','talk'].forEach(id => $(id).disabled = false);
+    $('status').textContent = '🔴 녹화 중 — 말하거나 입력하세요';
+  } catch (e) { alert('시작 실패: 마이크를 허용해 주세요\n' + e.message); }
+};
+
+function stopRec() {
+  recording = false;
+  recorder.stop();
+  micStream.getTracks().forEach(t => t.stop());
+  ['msg','send','talk'].forEach(id => $(id).disabled = true);
+  $('rec').textContent = '● 녹화 시작';
+}
+
+function saveRec() {
+  const blob = new Blob(chunks, { type: recorder.mimeType });
+  const ext = recorder.mimeType.includes('mp4') ? 'mp4' : 'webm';
+  const a = $('download');
+  a.href = URL.createObjectURL(blob);
+  a.download = `AI대화_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.${ext}`;
+  a.style.display = 'inline-block';
+  $('status').textContent = '✅ 끝! 저장 버튼 → 유튜브에 업로드';
+  audioCtx.close();
+}
+
+// ---------- AI와 대화 ----------
+async function api(path, body, isForm) {
+  const r = await fetch('https://api.openai.com/v1/' + path, {
+    method: 'POST',
+    headers: Object.assign({ Authorization: 'Bearer ' + $('key').value }, isForm ? {} : { 'Content-Type': 'application/json' }),
+    body: isForm ? body : JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error((await r.text()).slice(0, 200));
+  return r;
+}
+
+async function ask(text) {
+  if (!text.trim() || busy) return;
+  busy = true;
+  chat.push({ role: 'user', content: text });
+  const reply = { role: 'assistant', content: '생각 중…' };
+  chat.push(reply);
+  try {
+    const r = await api('chat/completions', { model: $('model').value, messages: chat.slice(0, -1) });
+    reply.content = (await r.json()).choices[0].message.content;
+    await speak(reply.content);
+  } catch (e) { reply.content = '⚠️ 오류: ' + e.message; }
+  busy = false;
+}
+
+async function speak(text) {
+  const r = await api('audio/speech', { model: 'tts-1', voice: $('voice').value, input: text.slice(0, 4000) });
+  const buf = await audioCtx.decodeAudioData(await r.arrayBuffer());
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  src.connect(audioCtx.destination); // 스피커로 듣기
+  src.connect(recDest);              // 영상에 녹음
+  src.start();
+  return new Promise(res => src.onended = res);
+}
+
+$('send').onclick = () => { ask($('msg').value); $('msg').value = ''; };
+$('msg').onkeydown = e => { if (e.key === 'Enter') $('send').onclick(); };
+
+// 🎤 꾹 누르고 말하기 → 글자로 바꿔서 보내기
+let vRec, vChunks;
+function talkStart(e) {
+  e.preventDefault();
+  if (!recording || busy) return;
+  const t = ['audio/mp4', 'audio/webm'].find(t => MediaRecorder.isTypeSupported(t));
+  vRec = new MediaRecorder(micStream, { mimeType: t });
+  vChunks = [];
+  vRec.ondataavailable = e => vChunks.push(e.data);
+  vRec.onstop = async () => {
+    $('talk').textContent = '⏳ 알아듣는 중…';
+    try {
+      const f = new FormData();
+      f.append('file', new Blob(vChunks, { type: t }), t.includes('mp4') ? 'a.mp4' : 'a.webm');
+      f.append('model', 'whisper-1');
+      const r = await api('audio/transcriptions', f, true);
+      await ask((await r.json()).text);
+    } catch (e) { alert('음성 인식 실패: ' + e.message); }
+    $('talk').textContent = '🎤 꾹 누르고 말하기';
+  };
+  vRec.start();
+  $('talk').textContent = '🔴 듣는 중… (손 떼면 전송)';
+}
+function talkEnd(e) { e.preventDefault(); if (vRec && vRec.state === 'recording') vRec.stop(); }
+$('talk').addEventListener('pointerdown', talkStart);
+$('talk').addEventListener('pointerup', talkEnd);
+$('talk').addEventListener('pointerleave', talkEnd);
+</script>
+</body>
+</html>
