@@ -74,11 +74,36 @@ input[type=range]{flex:1;accent-color:var(--green)}
 <div class="card">
   <h2><span class="num">1</span>캐릭터 그림 준비</h2>
   <div class="tabs" id="tabs">
-    <button class="tab on" data-t="upload">📁 내 그림 넣기</button>
+    <button class="tab on" data-t="gen">✨ 이미지 생성</button>
+    <button class="tab" data-t="upload">📁 내 그림 넣기</button>
     <button class="tab" data-t="maker">🎨 캐릭터 만들기</button>
     <button class="tab" data-t="ai" id="aiTab" hidden>🤖 AI로 그리기</button>
   </div>
-  <div class="pane" id="p-upload">
+  <div class="pane" id="p-gen">
+    <div class="opts">
+      <div class="opt"><b>그림 만드는 방법</b>
+        <select id="engine" style="width:100%">
+          <option value="builtin">🆓 내장 생성 — 하얀 동글이 (바로, 무료)</option>
+          <option value="claude" id="engClaude" disabled>🤖 Claude AI 생성 (이 페이지에서만)</option>
+          <option value="openai">🖼️ OpenAI 이미지 생성 (API 키 필요, 유료)</option>
+        </select>
+        <div id="openaiBox" hidden style="margin-top:6px">
+          <input type="password" id="oaKey" placeholder="sk-... OpenAI API 키" style="width:100%">
+          <div class="hint">키는 내 브라우저에만 저장돼요. 1장에 약 20~60원.</div>
+        </div>
+        <div style="margin-top:6px"><label class="hint">캐릭터 설명 (AI용)</label>
+          <input type="text" id="genDesc" style="width:100%" value="동글동글한 하얀 새, 작은 점 눈, 노란 부리, 짧은 팔"></div>
+        <label class="hint" id="genRefWrap"><input type="checkbox" id="genRef"> 📁에 넣은 내 그림을 참고해서 비슷하게 (AI용)</label>
+      </div>
+      <div class="opt"><b>문구 (한 줄에 하나, 문구마다 그림 1장)</b>
+        <textarea id="genPhrases" rows="8" style="width:100%;font-size:14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text);padding:6px"></textarea>
+        <div class="row" style="margin-top:4px"><button class="btn" id="genFill">기본 문구 채우기</button><span class="hint">문구를 보고 표정·포즈를 알아서 골라요</span></div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="btn main" id="genGo">✨ 그림 생성하기</button><span class="hint" id="genStatus"></span></div>
+    <div class="hint" style="margin-top:6px">생성된 그림에는 글자를 넣지 않고, 2단계에서 선명한 한글로 얹어요. (AI는 한글을 잘 못 써요)</div>
+  </div>
+  <div class="pane" id="p-upload" hidden>
     <div class="drop" id="drop">📁 여기를 눌러 그림 고르기 (여러 장 가능)<br><span class="hint">PNG·JPG · 배경이 투명하거나 단색이면 좋아요</span></div>
     <input type="file" id="file" accept="image/*" multiple hidden>
   </div>
@@ -116,11 +141,12 @@ input[type=range]{flex:1;accent-color:var(--green)}
       <label>색 <input type="color" id="oc" value="#ffffff"></label></div>
     <div class="opt"><b>글자</b>
       <label><input type="checkbox" id="text" checked> 글자 넣기</label>
+      <label>스타일 <select id="tstyle"><option value="black">굵은 검정 (사진처럼)</option><option value="color">알록달록 색 글씨</option></select></label>
       <label>글씨체 <select id="font"><option value="Jua">주아 (동글)</option><option value="Do Hyeon">도현 (굵게)</option><option value="Gaegu">개구 (손글씨)</option></select></label>
-      <label>위치 <select id="pos"><option value="bottom">아래</option><option value="top">위</option></select></label>
+      <label>위치 <select id="pos"><option value="top">위</option><option value="bottom">아래</option></select></label>
       <label>색 <input type="color" id="tc" value="#333333"> 자동 색 <input type="checkbox" id="autoColor" checked></label></div>
     <div class="opt"><b>자동 변형</b>
-      <label><input type="checkbox" id="deco" checked> 이모지 장식 붙이기</label>
+      <label>장식 <select id="deco"><option value="lines">노란 강조선 (사진처럼)</option><option value="emoji">이모지</option><option value="none">없음</option></select></label>
       <label><input type="checkbox" id="vary" checked> 같은 그림 반복 시 좌우반전·기울이기</label>
       <div class="hint">그림이 적어도 다양하게 만들어 줘요</div></div>
   </div>
@@ -197,7 +223,7 @@ function renderThumbs(){
   const box = $('thumbs'); box.innerHTML='';
   rawImages.forEach((r,i)=>{ const d=document.createElement('div'); d.className='th'; d.title='누르면 삭제';
     const t=document.createElement('canvas'); t.width=r.canvas.width; t.height=r.canvas.height; t.getContext('2d').drawImage(r.canvas,0,0); d.appendChild(t);
-    if(r.expr){ const s=document.createElement('span'); s.textContent=EXPR_KO[r.expr]; d.appendChild(s); }
+    if(r.caption||r.expr){ const s=document.createElement('span'); s.textContent=r.caption||EXPR_KO[r.expr]; d.appendChild(s); }
     d.onclick=()=>{ rawImages.splice(i,1); renderThumbs(); };
     box.appendChild(d); });
   $('srcCount').textContent = `준비된 그림: ${rawImages.length}장` + (rawImages.length?' (그림을 누르면 삭제)':'');
@@ -298,7 +324,7 @@ let sampleFn = null;
     if(!window.claude) return;
     sampleFn = await window.claude.use('sample');
     if(!sampleFn) return;
-    $('aiTab').hidden = false;
+    $('aiTab').hidden = false; $('engClaude').disabled = false;
     const lim = await sampleFn.limits().catch(()=>null);
     if(lim && lim.images) $('aiRefWrap').hidden = false;
   }catch(e){}
@@ -331,6 +357,123 @@ Thick dark outlines (stroke-width 6-8), flat bright colors, big head, kawaii LIN
     st.textContent = e && e.code==='not_granted' ? 'AI 사용이 허락되지 않았어요.' : e && e.code==='rate_limited' ? '잠시 후 다시 해 보세요.' : '실패했어요. 다시 해 보세요.';
   }
   $('aiGo').disabled = false;
+};
+
+// ===== 1-ㄱ. 이미지 생성 =====
+// 문구 → 표정 (단어로 짐작)
+const MOOD_WORDS = [
+ ['angry',/화|싫|짜증|그만|안 돼|안돼|하지마|흥|빡/],['sad',/슬|미안|울|힘들|아파|배고|외로|흑|ㅠ|ㅜ|집에/],
+ ['love',/사랑|좋아|고마|감사|보고 싶|하트|부탁|최고|축하/],['surprised',/\?|헐|대박|진짜|뭐|놀|엥|!!/],
+ ['sleepy',/졸|잘 자|굿밤|피곤|자야|밤|zz/i],['wink',/화이팅|오케이|ok|알겠|응원|수고|ㅋ|ㅎ|놀자/i],['happy',/안녕|하이|좋은|ㅋㅋ|행복|웃|신나|가자|퇴근/]
+];
+function moodOf(text){
+  for(const [m,re] of MOOD_WORDS) if(re.test(text)) { const ph=PHRASES.find(p=>p[2]===m); return [m, ph?ph[1]:'✨']; }
+  return ['normal','✨'];
+}
+// 간단한 랜덤 (같은 문구면 같은 그림)
+function rng(seed){ let t=0; for(const ch of seed) t=(t*31+ch.charCodeAt(0))>>>0; return ()=>{ t=(t*1664525+1013904223)>>>0; return t/4294967296; }; }
+
+// 하얀 동글이 새: 문구마다 몸·팔·눈·입이 조금씩 달라짐
+function drawBlob(expr, seed){
+  const r = rng(seed);
+  const c=document.createElement('canvas'); c.width=400; c.height=400; const x=c.getContext('2d');
+  const ink='#1e1e1e'; x.lineJoin='round'; x.lineCap='round';
+  const bw = 125+r()*20, bh = 170+r()*20, cx=200, cy=225, tilt=(r()-0.5)*0.2;
+  const armUp = expr==='happy'||expr==='surprised'||expr==='angry'||r()>0.6;
+  // 몸 (달걀 모양: 위는 둥글고 아래는 넓적)
+  x.strokeStyle=ink; x.lineWidth=7;
+  x.save(); x.translate(cx,cy); x.rotate(tilt);
+  x.beginPath(); x.moveTo(-bw,60); x.bezierCurveTo(-bw-5,-bh-20,bw+5,-bh-20,bw,60); x.bezierCurveTo(bw,bh-50,-bw,bh-50,-bw,60); x.closePath();
+  x.fillStyle='#fff'; x.fill(); x.stroke();
+  x.restore();
+  // 짧은 팔 (몸 옆에 붙어서 위/아래로)
+  x.fillStyle='#fff';
+  [[-1,cx-bw+6],[1,cx+bw-6]].forEach(([d,ax])=>{ const ay = armUp ? cy+10 : cy+70; const ang = armUp ? d*-0.55 : d*0.35;
+    x.save(); x.translate(ax,ay); x.rotate(ang); x.beginPath(); x.ellipse(d*18, 0, 20, 36, 0, 0, Math.PI*2); x.fill(); x.stroke();
+    x.beginPath(); x.ellipse(d*18, 0, 20, 36, 0, Math.PI*(d>0?0.5:1.5)-0.9, Math.PI*(d>0?0.5:1.5)+0.9); x.fillStyle='#fff'; x.lineWidth=10; x.strokeStyle='#fff'; x.stroke(); x.lineWidth=7; x.strokeStyle=ink; x.restore(); });
+  // 눈
+  const ey = cy-40+(r()-0.5)*12, gap = 48+r()*24, es = 6+r()*3;
+  x.fillStyle=ink;
+  const eye=(px,kind)=>{ x.beginPath();
+    if(kind==='closed'){ x.lineWidth=6; x.moveTo(px-10,ey); x.lineTo(px+10,ey); x.stroke(); }
+    else if(kind==='up'){ x.lineWidth=6; x.arc(px,ey+6,11,Math.PI*1.15,Math.PI*1.85); x.stroke(); }
+    else if(kind==='big'){ x.lineWidth=5; x.fillStyle='#fff'; x.arc(px,ey,16,0,7); x.fill(); x.stroke(); x.fillStyle=ink; x.beginPath(); x.arc(px,ey,7,0,7); x.fill(); }
+    else if(kind==='heart'){ const s=13; x.fillStyle='#ff4d6d'; x.moveTo(px,ey+s*0.9); x.bezierCurveTo(px-s*1.6,ey-s*0.2,px-s*0.6,ey-s*1.3,px,ey-s*0.4); x.bezierCurveTo(px+s*0.6,ey-s*1.3,px+s*1.6,ey-s*0.2,px,ey+s*0.9); x.fill(); x.fillStyle=ink; }
+    else { x.arc(px,ey,es,0,7); x.fill(); } };
+  const ek = {happy:'dot',sad:'dot',angry:'dot',surprised:'big',love:'heart',sleepy:'closed',wink:'dot',normal:'dot'}[expr]||'dot';
+  eye(cx-gap, ek); eye(cx+gap, expr==='wink'?'closed':(expr==='happy'&&r()>0.5?'up':ek));
+  if(expr==='angry'){ x.lineWidth=7; x.beginPath(); x.moveTo(cx-gap-16,ey-26); x.lineTo(cx-gap+12,ey-14); x.moveTo(cx+gap+16,ey-26); x.lineTo(cx+gap-12,ey-14); x.stroke(); }
+  if(expr==='sad'){ x.lineWidth=6; x.beginPath(); x.moveTo(cx-gap-14,ey-18); x.lineTo(cx-gap+10,ey-26); x.moveTo(cx+gap+14,ey-18); x.lineTo(cx+gap-10,ey-26); x.stroke();
+    x.fillStyle='#7ec8ff'; x.beginPath(); x.moveTo(cx-gap-4,ey+12); x.quadraticCurveTo(cx-gap-16,ey+36,cx-gap-4,ey+42); x.quadraticCurveTo(cx-gap+8,ey+36,cx-gap-4,ey+12); x.fill(); }
+  // 부리
+  const my = ey+45, open = expr==='happy'||expr==='surprised'||expr==='angry'||(expr==='normal'&&r()>0.5);
+  x.lineWidth=6; x.strokeStyle=ink;
+  if(open){ const mw = 28+r()*14, mh = expr==='surprised'?36:26+r()*12;
+    x.fillStyle='#ffd23f'; x.beginPath(); x.ellipse(cx,my+mh*0.5,mw+6,mh+8,0,0,7); x.fill(); x.stroke();
+    x.fillStyle='#f6a6b2'; x.beginPath(); x.ellipse(cx,my+mh*0.45,mw-4,mh-2,0,0,7); x.fill(); x.stroke();
+    x.fillStyle='#ffd23f'; x.beginPath(); x.ellipse(cx,my+mh*1.05,mw-2,9,0,0,7); x.fill(); x.stroke();
+  } else if(expr==='sleepy'||expr==='sad'){ x.fillStyle='#ffd23f'; x.beginPath(); x.moveTo(cx-18,my-4); x.lineTo(cx+18,my-4); x.lineTo(cx,my+10); x.closePath(); x.fill(); x.stroke(); }
+  else { x.fillStyle='#ffd23f'; x.beginPath(); x.ellipse(cx,my,20,11,0,0,7); x.fill(); x.stroke(); x.beginPath(); x.moveTo(cx-20,my); x.lineTo(cx+20,my); x.stroke(); }
+  // 볼
+  if(expr==='love'||expr==='happy'||r()>0.5){ x.fillStyle='rgba(255,150,170,.55)'; x.beginPath(); x.ellipse(cx-gap-22,ey+30,16,9,0,0,7); x.ellipse(cx+gap+22,ey+30,16,9,0,0,7); x.fill(); }
+  // 효과
+  if(expr==='angry'){ x.strokeStyle='#e8413b'; x.lineWidth=6; const ax=cx+bw-20, ay=cy-120; x.beginPath(); [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sy])=>{ x.moveTo(ax+sx*5,ay+sy*18); x.quadraticCurveTo(ax+sx*5,ay+sy*5,ax+sx*18,ay+sy*5); }); x.stroke(); }
+  if(expr==='sleepy'){ x.fillStyle='#5b6ee1'; x.font='bold 42px sans-serif'; x.fillText('Z',cx+bw-40,cy-110); x.font='bold 28px sans-serif'; x.fillText('z',cx+bw-5,cy-140); }
+  if(expr==='love'){ x.fillStyle='#ff8fab'; const hx=cx+bw-30, hy=cy-120, s=14; x.beginPath(); x.moveTo(hx,hy+s*0.9); x.bezierCurveTo(hx-s*1.6,hy-s*0.2,hx-s*0.6,hy-s*1.3,hx,hy-s*0.4); x.bezierCurveTo(hx+s*0.6,hy-s*1.3,hx+s*1.6,hy-s*0.2,hx,hy+s*0.9); x.fill(); }
+  if(expr==='surprised'){ x.fillStyle='#7ec8ff'; x.beginPath(); x.moveTo(cx+bw-30,cy-90); x.quadraticCurveTo(cx+bw-42,cy-62,cx+bw-30,cy-56); x.quadraticCurveTo(cx+bw-18,cy-62,cx+bw-30,cy-90); x.fill(); }
+  return c;
+}
+
+$('genFill').onclick = () => { $('genPhrases').value = PHRASES.slice(0,+$('count').value).map(p=>p[0]).join('\n'); };
+$('genFill').click();
+$('engine').onchange = () => { $('openaiBox').hidden = $('engine').value!=='openai'; };
+try{ $('oaKey').value = localStorage.getItem('oaKey')||''; }catch(e){}
+$('oaKey').onchange = () => { try{ localStorage.setItem('oaKey',$('oaKey').value.trim()); }catch(e){} };
+
+// OpenAI 이미지 생성 (투명 배경 PNG)
+async function openaiImage(key, prompt, refFile){
+  let res;
+  if(refFile){ const fd=new FormData(); fd.append('model','gpt-image-1'); fd.append('image',refFile); fd.append('prompt',prompt); fd.append('size','1024x1024'); fd.append('background','transparent'); fd.append('quality','low');
+    res = await fetch('https://api.openai.com/v1/images/edits',{method:'POST',headers:{Authorization:'Bearer '+key},body:fd}); }
+  else res = await fetch('https://api.openai.com/v1/images/generations',{method:'POST',headers:{Authorization:'Bearer '+key,'Content-Type':'application/json'},
+    body:JSON.stringify({model:'gpt-image-1',prompt,size:'1024x1024',background:'transparent',output_format:'png',quality:'low',n:1})});
+  const j = await res.json(); if(!res.ok) throw new Error(j.error&&j.error.message||res.status);
+  return loadImage('data:image/png;base64,'+j.data[0].b64_json);
+}
+const STYLE = 'Flat kawaii LINE sticker style, thick clean black outline, simple shapes, pure white body, flat colors, no shading, no text, no letters, no background, character centered and filling the frame.';
+
+$('genGo').onclick = async () => {
+  const lines = $('genPhrases').value.split('\n').map(t=>t.trim()).filter(Boolean);
+  if(!lines.length){ alert('문구를 적어 주세요.'); return; }
+  const eng = $('engine').value, st=$('genStatus'), btn=$('genGo'); btn.disabled=true;
+  const desc = $('genDesc').value.trim()||'cute round white bird';
+  const ref = $('genRef').checked ? (rawImages.find(r=>r.file)||{}).file : null;
+  const made = [];
+  try{
+    if(eng==='builtin'){
+      lines.forEach(t=>{ const [m]=moodOf(t); made.push({canvas:drawBlob(m,t), expr:m, caption:t}); });
+    } else if(eng==='claude'){
+      if(!sampleFn) throw new Error('Claude AI는 claude.ai 페이지에서 열었을 때만 돼요.');
+      for(let i=0;i<lines.length;i+=4){ const chunk=lines.slice(i,i+4); st.textContent=`AI가 그리는 중... ${i+1}~${Math.min(i+4,lines.length)} / ${lines.length}`;
+        const moods = chunk.map(t=>moodOf(t)[0]);
+        const prompt = `Draw ONE character: "${desc}". ${STYLE}\nReturn JSON only: {"svgs":[...]} with ${chunk.length} SVG strings, one per item, same character each time, pose/expression per item:\n`+chunk.map((t,k)=>`${k+1}. phrase "${t}" → mood ${moods[k]}`).join('\n')+`\nEach SVG: viewBox="0 0 400 400" width="400" height="400", transparent background, stroke-width 6-8, no text, no script, under 2500 chars.`;
+        const opts={modelTier:'default'}; if(ref) opts.images=ref;
+        const res = await sampleFn.json(prompt, opts); const svgs = res&&res.svgs||[];
+        for(let k=0;k<chunk.length;k++){ const svg=svgs[k]; if(typeof svg!=='string'||!svg.includes('<svg')) continue;
+          try{ const img=await loadImage('data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg.replace(/<script[\s\S]*?<\/script>/gi,''))); made.push({canvas:toCanvas(img,400), expr:moods[k], caption:chunk[k]}); }catch(e){} } }
+    } else {
+      const key = $('oaKey').value.trim(); if(!key) throw new Error('OpenAI API 키를 넣어 주세요.');
+      for(let i=0;i<lines.length;i++){ st.textContent=`OpenAI가 그리는 중... ${i+1} / ${lines.length}`;
+        const [m]=moodOf(lines[i]); const moodKo={happy:'very happy, big open mouth laughing',sad:'sad, teary eyes',angry:'angry, furrowed brows, anger mark',surprised:'shocked, wide eyes, open mouth',love:'in love, heart eyes',sleepy:'sleepy, closed eyes, Zzz',wink:'winking, cheerful',normal:'calm neutral face'}[m];
+        const prompt = `A sticker of ${desc}. Expression and pose: ${moodKo} (for the phrase "${lines[i]}"). ${STYLE}`;
+        try{ const img = await openaiImage(key, prompt, ref); made.push({canvas:toCanvas(img), expr:m, caption:lines[i]}); }
+        catch(e){ st.textContent='오류: '+e.message; if(/key|auth|401|quota|billing/i.test(e.message)) throw e; } }
+    }
+    rawImages = made.concat(rawImages.filter(r=>r.caption==null));
+    renderThumbs(); st.textContent = `✅ ${made.length}장 생성! 아래 2단계에서 "스티커 만들기"를 누르세요.`;
+    $('count').value = [8,16,24,32,40].find(n=>n>=made.length)||40;
+  }catch(e){ st.textContent = '실패: '+(e.message||e.code||e); }
+  btn.disabled=false;
 };
 
 // ===== 배경 지우기: 그림 가장자리에서 배경색과 비슷한 곳을 따라가며 투명하게 =====
@@ -394,6 +537,16 @@ function drawSticker(i){
   const iw = img.width*sc, ih = img.height*sc;
   const ix = (W-iw)/2, iy = top ? H-PAD-ih : PAD;
   x.drawImage(img, ix, iy, iw, ih);
+  if(s.deco==='lines'){ // 노란 강조선 (머리 양옆)
+    const ly = top ? PAD+textH+18 : PAD+30;
+    x.lineCap='round';
+    [[-1,ix+10],[1,ix+iw-10]].forEach(([d,bx])=>{
+      x.save(); x.translate(bx, ly);
+      [[-0.95,0],[-0.55,-14],[-0.2,-28]].forEach(([a,dy],k)=>{ const ang=d*a; const len=22-k*2;
+        x.beginPath(); x.moveTo(Math.cos(ang)*8, dy+Math.sin(ang)*8); x.lineTo(Math.cos(ang)*(8+len), dy+Math.sin(ang)*(8+len));
+        x.lineWidth=12; x.strokeStyle='#2b2b2b'; x.stroke(); x.lineWidth=7; x.strokeStyle='#ffd400'; x.stroke(); });
+      x.restore(); });
+  }
   if(s.emoji.trim()){
     x.font = '54px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
     x.textAlign='center'; x.textBaseline='middle';
@@ -406,9 +559,15 @@ function drawSticker(i){
     x.textAlign='center'; x.textBaseline='middle';
     const ty = top ? PAD+textH/2 : H-PAD-textH/2;
     x.lineJoin='round';
-    x.lineWidth = 12; x.strokeStyle = '#ffffff'; x.strokeText(s.caption, W/2, ty);
-    x.fillStyle = $('autoColor').checked ? COLORS[i%COLORS.length] : $('tc').value;
-    x.fillText(s.caption, W/2, ty);
+    if($('tstyle').value==='black'){
+      x.lineWidth = 14; x.strokeStyle = '#ffffff'; x.strokeText(s.caption, W/2, ty);
+      x.lineWidth = 5; x.strokeStyle = '#111111'; x.strokeText(s.caption, W/2, ty);
+      x.fillStyle = '#111111'; x.fillText(s.caption, W/2, ty);
+    } else {
+      x.lineWidth = 12; x.strokeStyle = '#ffffff'; x.strokeText(s.caption, W/2, ty);
+      x.fillStyle = $('autoColor').checked ? COLORS[i%COLORS.length] : $('tc').value;
+      x.fillText(s.caption, W/2, ty);
+    }
   }
 }
 // 대표(main) / 탭(tab) 이미지
@@ -427,19 +586,22 @@ $('make').onclick = async () => {
   await new Promise(r=>setTimeout(r,30));
   try{ await document.fonts.load(`40px "${$('font').value}"`); }catch(e){}
   sources = rawImages.map(r => ({canvas: trim($('bg').checked ? removeBg(r.canvas, +$('tol').value) : r.canvas), expr: r.expr}));
-  const n = +$('count').value, deco = $('deco').checked, vary = $('vary').checked;
+  const n = +$('count').value, deco = $('deco').value, vary = $('vary').checked;
   const used = {}; // 그림마다 몇 번 썼는지
   let cycle = 0;
   stickers = [];
   for(let i=0;i<n;i++){
     // 문구 표정과 맞는 그림 고르기 → 없으면 순서대로
-    const want = PHRASES[i][2];
+    const own = rawImages[i] && rawImages[i].caption != null; // 생성 탭에서 문구와 함께 만든 그림
+    const want = own ? rawImages[i].expr : PHRASES[i][2];
     const match = sources.map((s,k)=>k).filter(k=>sources[k].expr===want);
-    const src = match.length ? match[(used['e'+want]=(used['e'+want]||0)+1)%match.length] : (cycle++)%sources.length;
+    const src = own ? i : match.length ? match[(used['e'+want]=(used['e'+want]||0)+1)%match.length] : (cycle++)%sources.length;
+    const caption = own ? rawImages[i].caption : PHRASES[i][0];
+    const emoji = own ? (moodOf(caption)[1]) : PHRASES[i][1];
     const round = used[src] = (used[src]===undefined ? 0 : used[src]+1);
     const opt = { flip: vary && round%2===1, angle: vary && round>0 ? [0,-8,8,-5,5][round%5] : 0, decoLeft: i%2===1 };
     const c = document.createElement('canvas'); c.width=W; c.height=H;
-    stickers.push({ src, caption: PHRASES[i][0], emoji: deco?PHRASES[i][1]:'', opt, canvas: c });
+    stickers.push({ src, caption, emoji: deco==='emoji'?emoji:'', deco, opt, canvas: c });
   }
   renderGrid();
   $('make').disabled = false; $('make').textContent = '✨ 다시 만들기';
@@ -467,7 +629,7 @@ function renderGrid(){
     const d=document.createElement('div'); const c=drawIcon(w,h,p); d.append(c, n+` (${w}×${h})`); sp.appendChild(d);
   });
 }
-['outline','ow','oc','text','font','pos','tc','autoColor'].forEach(id=>$(id).addEventListener('input',async()=>{
+['outline','ow','oc','text','tstyle','font','pos','tc','autoColor'].forEach(id=>$(id).addEventListener('input',async()=>{
   if(!stickers.length) return;
   if(id==='font'){ try{ await document.fonts.load(`40px "${$('font').value}"`); }catch(e){} }
   renderGrid();
