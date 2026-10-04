@@ -136,3 +136,10 @@ https://github.com/dongjjamong27-blip/music-app/releases/latest
 - **아이폰**: 저장소 Settings → Pages → Branch 를 `claude/yamaha-electronic-piano-ro5l8c` / `(root)` 로 저장 →
   Safari 로 `https://dongjjamong27-blip.github.io/music-app/electone/` 열기 → 공유 → **홈 화면에 추가**
 - 파일: `electone/index.html` (웹), `electone-app/` (안드로이드 앱 껍데기)
+
+---
+
+## 🟩 라인 스티커 메이커
+
+`line-sticker/index.html` — 그림을 넣거나(또는 캐릭터 만들기 / AI로 그리기) → 문구·이모지·흰 테두리 자동 →
+LINE 규격 ZIP(main 240×240, tab 96×74, 01~40.png 370×320) 다운로드 → LINE Creators Market 에 업로드.

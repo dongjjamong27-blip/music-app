@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>라인 스티커 메이커</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Do+Hyeon&family=Gaegu:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3f5f2; --card:#ffffff; --text:#1d2420; --muted:#5f6b64; --line:#e1e6e2;
+  --green:#06c755; --green-d:#04a346; --chip:#eef2ef; --check:#e9ece9; --check2:#ffffff;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --bg:#121614; --card:#1c211e; --text:#e9eeea; --muted:#9aa69f; --line:#2d3430; --chip:#262c28; --check:#2a302c; --check2:#1f2421; }
+}
+:root[data-theme="dark"]{ --bg:#121614; --card:#1c211e; --text:#e9eeea; --muted:#9aa69f; --line:#2d3430; --chip:#262c28; --check:#2a302c; --check2:#1f2421; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Noto Sans KR",sans-serif;-webkit-text-size-adjust:100%}
+header{background:var(--green);color:#fff;padding:14px 16px}
+header h1{margin:0;font-size:19px}
+header p{margin:4px 0 0;font-size:13px;opacity:.9}
+main{max-width:1100px;margin:0 auto;padding:12px 16px 40px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.card h2{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:8px}
+.num{background:var(--green);color:#fff;border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+.btn{border:none;border-radius:10px;padding:10px 14px;font-size:14px;cursor:pointer;background:var(--chip);color:var(--text)}
+.btn.main{background:var(--green);color:#fff;font-weight:700}
+.btn.main:hover{background:var(--green-d)}
+.btn:disabled{opacity:.5;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.opt{background:var(--chip);border-radius:10px;padding:10px;font-size:13px}
+.opt b{display:block;margin-bottom:6px}
+.opt label{display:flex;align-items:center;gap:6px;margin:4px 0}
+select,input[type=text]{font-size:14px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text)}
+input[type=range]{flex:1;accent-color:var(--green)}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.thumbs canvas,.thumbs img{width:70px;height:70px;object-fit:contain;border-radius:8px;background:repeating-conic-gradient(var(--check) 0 25%,var(--check2) 0 50%) 0 0/14px 14px;border:1px solid var(--line)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.st{background:var(--chip);border-radius:10px;padding:6px;display:flex;flex-direction:column;gap:4px}
+.st canvas{width:100%;height:auto;border-radius:6px;background:repeating-conic-gradient(var(--check) 0 25%,var(--check2) 0 50%) 0 0/16px 16px}
+.st .meta{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.st input{width:100%;font-size:13px;padding:5px 6px}
+.st .two{display:flex;gap:4px}
+.st .two input:first-child{flex:1}
+.st .two input:last-child{width:48px;text-align:center}
+.hint{font-size:12px;color:var(--muted);line-height:1.6}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:18px;text-align:center;cursor:pointer}
+.drop.over{border-color:var(--green)}
+.tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.tab{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:20px;padding:8px 14px;font-size:14px;cursor:pointer}
+.tab.on{background:var(--green);border-color:var(--green);color:#fff;font-weight:700}
+.chip{border:2px solid transparent;background:var(--card);border-radius:10px;padding:6px 10px;cursor:pointer;font-size:14px;color:var(--text)}
+.chip.on{border-color:var(--green)}
+.sw{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);cursor:pointer}
+.sw.on{outline:3px solid var(--green)}
+.thumbs .th{position:relative}
+.thumbs .th span{position:absolute;left:2px;bottom:2px;font-size:10px;background:rgba(0,0,0,.55);color:#fff;border-radius:4px;padding:0 4px}
+.status{font-size:13px;margin-top:8px;color:var(--muted)}
+.ok{color:var(--green)}
+.special{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+.special div{font-size:11px;color:var(--muted);text-align:center}
+.special canvas{display:block;border-radius:6px;background:repeating-conic-gradient(var(--check) 0 25%,var(--check2) 0 50%) 0 0/14px 14px;border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<header>
+  <h1>🟩 라인 스티커 메이커</h1>
+  <p>내 그림을 넣으면 LINE 규격 스티커 세트(ZIP)를 자동으로 만들어요</p>
+</header>
+<main>
+
+<div class="card">
+  <h2><span class="num">1</span>캐릭터 그림 준비</h2>
+  <div class="tabs" id="tabs">
+    <button class="tab on" data-t="upload">📁 내 그림 넣기</button>
+    <button class="tab" data-t="maker">🎨 캐릭터 만들기</button>
+    <button class="tab" data-t="ai" id="aiTab" hidden>🤖 AI로 그리기</button>
+  </div>
+  <div class="pane" id="p-upload">
+    <div class="drop" id="drop">📁 여기를 눌러 그림 고르기 (여러 장 가능)<br><span class="hint">PNG·JPG · 배경이 투명하거나 단색이면 좋아요</span></div>
+    <input type="file" id="file" accept="image/*" multiple hidden>
+  </div>
+  <div class="pane" id="p-maker" hidden>
+    <div class="opts">
+      <div class="opt"><b>동물</b><div class="row" id="animals"></div></div>
+      <div class="opt"><b>몸 색깔</b><div class="row" id="swatches"></div><label>직접 고르기 <input type="color" id="bodyColor" value="#ffd23f"></label></div>
+      <div class="opt"><b>소품</b><select id="acc"><option value="">없음</option><option value="ribbon">리본</option><option value="hat">모자</option><option value="leaf">새싹</option><option value="glasses">안경</option></select></div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="btn main" id="makeChar">🎨 표정 8가지 그리기</button><span class="hint">기쁨·슬픔·화남·놀람·사랑·졸림·윙크·기본</span></div>
+  </div>
+  <div class="pane" id="p-ai" hidden>
+    <label class="hint">어떤 캐릭터를 원하나요?</label>
+    <input type="text" id="aiDesc" style="width:100%;margin:6px 0" value="분홍색 볼을 가진 동글동글한 하얀 고양이">
+    <label class="hint" id="aiRefWrap" hidden><input type="checkbox" id="aiRef"> 1번에 넣은 내 그림을 참고해서 비슷하게</label>
+    <div class="row" style="margin-top:6px"><button class="btn main" id="aiGo">🤖 AI에게 표정 8가지 그려 달라고 하기</button><span class="hint" id="aiStatus"></span></div>
+    <p class="hint">AI 그림은 간단한 그림(SVG)으로 만들어져요. 시간이 30초~1분 걸려요.</p>
+  </div>
+  <div class="row" style="margin-top:10px"><span class="hint" id="srcCount">준비된 그림: 0장</span><button class="btn" id="clear">모두 지우기</button></div>
+  <div class="thumbs" id="thumbs"></div>
+</div>
+
+<div class="card">
+  <h2><span class="num">2</span>꾸미기 설정</h2>
+  <div class="opts">
+    <div class="opt"><b>스티커 개수</b>
+      <select id="count"><option>8</option><option selected>16</option><option>24</option><option>32</option><option>40</option></select>
+      <div class="hint">LINE은 8·16·24·32·40개만 가능해요</div></div>
+    <div class="opt"><b>배경 지우기</b>
+      <label><input type="checkbox" id="bg" checked> 그림 테두리 쪽 배경색 자동 삭제</label>
+      <label>세기 <input type="range" id="tol" min="5" max="120" value="40"></label></div>
+    <div class="opt"><b>흰 테두리 (스티커 느낌)</b>
+      <label><input type="checkbox" id="outline" checked> 켜기</label>
+      <label>두께 <input type="range" id="ow" min="2" max="14" value="7"></label>
+      <label>색 <input type="color" id="oc" value="#ffffff"></label></div>
+    <div class="opt"><b>글자</b>
+      <label><input type="checkbox" id="text" checked> 글자 넣기</label>
+      <label>글씨체 <select id="font"><option value="Jua">주아 (동글)</option><option value="Do Hyeon">도현 (굵게)</option><option value="Gaegu">개구 (손글씨)</option></select></label>
+      <label>위치 <select id="pos"><option value="bottom">아래</option><option value="top">위</option></select></label>
+      <label>색 <input type="color" id="tc" value="#333333"> 자동 색 <input type="checkbox" id="autoColor" checked></label></div>
+    <div class="opt"><b>자동 변형</b>
+      <label><input type="checkbox" id="deco" checked> 이모지 장식 붙이기</label>
+      <label><input type="checkbox" id="vary" checked> 같은 그림 반복 시 좌우반전·기울이기</label>
+      <div class="hint">그림이 적어도 다양하게 만들어 줘요</div></div>
+  </div>
+  <div class="row" style="margin-top:10px"><button class="btn main" id="make">✨ 스티커 만들기</button></div>
+</div>
+
+<div class="card" id="resultCard" hidden>
+  <h2><span class="num">3</span>미리보기 · 글자 고치기</h2>
+  <p class="hint">글자나 이모지를 고치면 바로 바뀌어요. 이모지 칸을 비우면 장식이 없어져요.</p>
+  <div class="special" id="special"></div>
+  <div class="grid" id="grid" style="margin-top:10px"></div>
+</div>
+
+<div class="card" id="dlCard" hidden>
+  <h2><span class="num">4</span>ZIP 받기 → LINE Creators Market 에 올리기</h2>
+  <div class="row"><button class="btn main" id="zip">📦 ZIP 파일 받기</button></div>
+  <div class="status" id="status"></div>
+  <p class="hint">
+    ZIP 안에는 <b>main.png</b>(대표 240×240) · <b>tab.png</b>(탭 96×74) · <b>01.png ~</b>(스티커 370×320, 여백 10px, 투명 배경)이 들어 있어요.<br>
+    올리는 곳: LINE Creators Market → 새로 만들기 → 스티커 → <b>이미지 편집 → ZIP 파일 업로드</b>
+  </p>
+</div>
+
+</main>
+<script>
+// ===== LINE 규격 =====
+const W = 370, H = 320, PAD = 10;
+
+// 기본 문구 · 이모지 · 어울리는 표정 (40개)
+const PHRASES = [
+ ['안녕!','👋','happy'],['고마워','💕','love'],['미안해','💦','sad'],['좋아요','👍','happy'],['사랑해','❤️','love'],['축하해','🎉','happy'],['화이팅!','💪','wink'],['잘 자','💤','sleepy'],
+ ['좋은 아침','☀️','happy'],['수고했어','✨','wink'],['ㅋㅋㅋ','😆','happy'],['헐','❗','surprised'],['뭐라고?','❓','surprised'],['화났어','💢','angry'],['슬퍼','😢','sad'],['배고파','🍚','sad'],
+ ['오케이','⭕','wink'],['싫어','❌','angry'],['기다려','⏰','normal'],['대박','🔥','surprised'],['부탁해','🙏','love'],['괜찮아?','🍀','normal'],['알겠어','👌','normal'],['진짜?','👀','surprised'],
+ ['바빠','💨','angry'],['놀자','🎵','happy'],['보고 싶어','💭','love'],['최고!','👑','wink'],['응원해','📣','happy'],['생일 축하해','🎂','happy'],['감사합니다','🙇','love'],['네~','😊','normal'],
+ ['아니요','🙅','angry'],['퇴근!','🏃','happy'],['가는 중','🚌','normal'],['집에 가고 싶다','🏠','sad'],['굿밤','🌙','sleepy'],['하이','✋','wink'],['쉿','🤫','normal'],['바이바이','👋','sleepy']
+];
+const EXPRS = ['normal','happy','sad','angry','surprised','love','sleepy','wink'];
+const EXPR_KO = {normal:'기본',happy:'기쁨',sad:'슬픔',angry:'화남',surprised:'놀람',love:'사랑',sleepy:'졸림',wink:'윙크'};
+const COLORS = ['#ff6b81','#ff9f43','#2e86de','#10ac84','#e84393','#8854d0','#ee5253','#0abde3'];
+
+const $ = id => document.getElementById(id);
+let rawImages = [];     // {canvas, expr} 준비된 그림
+let sources = [];       // 배경 지우고 잘라낸 그림 {canvas, expr}
+let stickers = [];      // {src, caption, emoji, opt, canvas}
+
+// ===== 탭 =====
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));
+  document.querySelectorAll('.pane').forEach(p=>p.hidden = p.id!=='p-'+t.dataset.t);
+});
+
+// ===== 1-가. 내 그림 넣기 =====
+$('drop').onclick = () => $('file').click();
+$('file').onchange = e => { addFiles(e.target.files); e.target.value=''; };
+['dragover','dragenter'].forEach(t=>$('drop').addEventListener(t,e=>{e.preventDefault();$('drop').classList.add('over');}));
+['dragleave','drop'].forEach(t=>$('drop').addEventListener(t,e=>{e.preventDefault();$('drop').classList.remove('over');}));
+$('drop').addEventListener('drop', e => addFiles(e.dataTransfer.files));
+$('clear').onclick = () => { rawImages=[]; renderThumbs(); };
+
+function addFiles(files){
+  [...files].filter(f=>f.type.startsWith('image/')).forEach(f=>{
+    loadImage(URL.createObjectURL(f)).then(img=>{ rawImages.push({canvas:toCanvas(img), expr:null, file:f}); renderThumbs(); }).catch(()=>{});
+  });
+}
+const loadImage = src => new Promise((ok,no)=>{ const i=new Image(); i.onload=()=>ok(i); i.onerror=no; i.src=src; });
+// 너무 큰 그림은 줄이기 (최대 800px)
+function toCanvas(img, size){
+  const w0 = img.width || size, h0 = img.height || size;
+  const s = Math.min(1, 800/Math.max(w0,h0));
+  const c = document.createElement('canvas'); c.width = Math.round(w0*s); c.height = Math.round(h0*s);
+  c.getContext('2d').drawImage(img,0,0,c.width,c.height); return c;
+}
+function renderThumbs(){
+  const box = $('thumbs'); box.innerHTML='';
+  rawImages.forEach((r,i)=>{ const d=document.createElement('div'); d.className='th'; d.title='누르면 삭제';
+    const t=document.createElement('canvas'); t.width=r.canvas.width; t.height=r.canvas.height; t.getContext('2d').drawImage(r.canvas,0,0); d.appendChild(t);
+    if(r.expr){ const s=document.createElement('span'); s.textContent=EXPR_KO[r.expr]; d.appendChild(s); }
+    d.onclick=()=>{ rawImages.splice(i,1); renderThumbs(); };
+    box.appendChild(d); });
+  $('srcCount').textContent = `준비된 그림: ${rawImages.length}장` + (rawImages.length?' (그림을 누르면 삭제)':'');
+}
+
+// ===== 1-나. 캐릭터 만들기 (직접 그림) =====
+const ANIMALS = {chick:'🐥 병아리', bear:'🐻 곰', cat:'🐱 고양이', rabbit:'🐰 토끼', dog:'🐶 강아지', frog:'🐸 개구리'};
+const SWATCH = ['#ffd23f','#c98b5a','#ffffff','#ffb6c9','#9ad0ff','#8fd694','#b9a2ff','#5a5a5a'];
+let animal = 'chick';
+Object.entries(ANIMALS).forEach(([k,v])=>{ const b=document.createElement('button'); b.className='chip'+(k===animal?' on':''); b.textContent=v;
+  b.onclick=()=>{ animal=k; document.querySelectorAll('#animals .chip').forEach(x=>x.classList.toggle('on',x===b));
+    $('bodyColor').value = {chick:'#ffd23f',bear:'#c98b5a',cat:'#ffffff',rabbit:'#ffb6c9',dog:'#f3d9b1',frog:'#8fd694'}[k]; };
+  $('animals').appendChild(b); });
+SWATCH.forEach(c=>{ const s=document.createElement('div'); s.className='sw'; s.style.background=c; s.onclick=()=>{$('bodyColor').value=c;}; $('swatches').appendChild(s); });
+
+function shade(hex, amt){ // 색을 조금 어둡게/밝게
+  const n=parseInt(hex.slice(1),16); let r=n>>16,g=n>>8&255,b=n&255;
+  r=Math.max(0,Math.min(255,r+amt)); g=Math.max(0,Math.min(255,g+amt)); b=Math.max(0,Math.min(255,b+amt));
+  return `rgb(${r},${g},${b})`;
+}
+function drawCharacter(kind, color, expr, acc){
+  const c=document.createElement('canvas'); c.width=400; c.height=400; const x=c.getContext('2d');
+  const ink='#3b2f2f', edge=shade(color,-60), cx=200, cy=225;
+  x.lineJoin='round'; x.lineCap='round';
+  const blob=(fn)=>{ x.beginPath(); fn(); x.fillStyle=color; x.fill(); x.lineWidth=6; x.strokeStyle=edge; x.stroke(); };
+  const ell=(ex,ey,rx,ry,rot=0)=>x.ellipse(ex,ey,rx,ry,rot,0,Math.PI*2);
+  // 귀 (몸 뒤)
+  if(kind==='bear'){ blob(()=>ell(105,110,38,38)); blob(()=>ell(295,110,38,38)); x.fillStyle=shade(color,-25); x.beginPath(); ell(105,110,20,20); ell(295,110,20,20); x.fill(); }
+  if(kind==='cat'){ blob(()=>{x.moveTo(85,150);x.lineTo(100,55);x.lineTo(170,105);x.closePath();}); blob(()=>{x.moveTo(315,150);x.lineTo(300,55);x.lineTo(230,105);x.closePath();});
+    x.fillStyle='#ffb3c1'; x.beginPath(); x.moveTo(105,125);x.lineTo(110,80);x.lineTo(145,108);x.closePath(); x.moveTo(295,125);x.lineTo(290,80);x.lineTo(255,108);x.closePath(); x.fill(); }
+  if(kind==='rabbit'){ const droop = expr==='sad'||expr==='sleepy';
+    blob(()=>ell(150,droop?95:60,26,droop?60:75,droop?-0.6:-0.15)); blob(()=>ell(250,droop?95:60,26,droop?60:75,droop?0.6:0.15));
+    x.fillStyle='#ffb3c1'; x.beginPath(); ell(150,droop?95:62,12,droop?42:55,droop?-0.6:-0.15); ell(250,droop?95:62,12,droop?42:55,droop?0.6:0.15); x.fill(); }
+  if(kind==='frog'){ blob(()=>ell(135,105,42,40)); blob(()=>ell(265,105,42,40)); }
+  // 몸
+  blob(()=>ell(cx,cy,150,138));
+  if(kind==='dog'){ x.fillStyle=shade(color,-55); x.strokeStyle=shade(color,-90); x.lineWidth=6;
+    [[90,170,-0.5],[310,170,0.5]].forEach(([ex,ey,r])=>{ x.beginPath(); ell(ex,ey,32,62,r); x.fill(); x.stroke(); }); }
+  if(kind==='chick'){ x.strokeStyle=color; x.lineWidth=10; x.beginPath(); x.moveTo(200,92); x.quadraticCurveTo(188,58,215,52); x.stroke();
+    x.strokeStyle=edge; x.lineWidth=4; x.stroke(); }
+  // 배
+  x.fillStyle=shade(color,35); x.beginPath(); ell(cx,cy+70,85,55); x.fill();
+  // 얼굴 위치
+  const ey = kind==='frog' ? 110 : 210, lx = kind==='frog'?135:150, rx = kind==='frog'?265:250;
+  if(kind==='frog'){ x.fillStyle='#fff'; x.beginPath(); ell(lx,ey,26,26); ell(rx,ey,26,26); x.fill(); }
+  // 볼
+  x.fillStyle = expr==='angry' ? 'rgba(255,80,80,.55)' : 'rgba(255,140,160,.6)';
+  x.beginPath(); ell(115,255,24,14); ell(285,255,24,14); x.fill();
+  // 눈
+  x.strokeStyle=ink; x.fillStyle=ink; x.lineWidth=8;
+  const dot=(px)=>{ x.beginPath(); ell(px,ey,12,14); x.fill(); x.fillStyle='#fff'; x.beginPath(); ell(px+4,ey-5,4,4); x.fill(); x.fillStyle=ink; };
+  const arcUp=(px)=>{ x.beginPath(); x.arc(px,ey+8,16,Math.PI*1.15,Math.PI*1.85); x.stroke(); };
+  const line=(px)=>{ x.beginPath(); x.moveTo(px-15,ey+2); x.lineTo(px+15,ey+2); x.stroke(); };
+  const heart=(hx,hy,s,col)=>{ x.fillStyle=col; x.beginPath(); x.moveTo(hx,hy+s*0.9); x.bezierCurveTo(hx-s*1.6,hy-s*0.2,hx-s*0.6,hy-s*1.3,hx,hy-s*0.4); x.bezierCurveTo(hx+s*0.6,hy-s*1.3,hx+s*1.6,hy-s*0.2,hx,hy+s*0.9); x.fill(); x.fillStyle=ink; };
+  switch(expr){
+    case 'happy': arcUp(lx); arcUp(rx); break;
+    case 'sad': dot(lx); dot(rx); x.beginPath(); x.moveTo(lx-20,ey-28); x.lineTo(lx+12,ey-36); x.moveTo(rx+20,ey-28); x.lineTo(rx-12,ey-36); x.stroke();
+      x.fillStyle='#6ec6ff'; x.beginPath(); x.moveTo(lx-4,ey+16); x.quadraticCurveTo(lx-16,ey+40,lx-4,ey+46); x.quadraticCurveTo(lx+8,ey+40,lx-4,ey+16); x.fill(); x.fillStyle=ink; break;
+    case 'angry': dot(lx); dot(rx); x.lineWidth=9; x.beginPath(); x.moveTo(lx-22,ey-36); x.lineTo(lx+16,ey-20); x.moveTo(rx+22,ey-36); x.lineTo(rx-16,ey-20); x.stroke();
+      x.strokeStyle='#e8413b'; x.lineWidth=7; const ax=315,ay=95; x.beginPath(); [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sy])=>{ x.moveTo(ax+sx*6,ay+sy*20); x.quadraticCurveTo(ax+sx*6,ay+sy*6,ax+sx*20,ay+sy*6); }); x.stroke(); x.strokeStyle=ink; x.lineWidth=8; break;
+    case 'surprised': x.lineWidth=6; x.fillStyle='#fff'; [lx,rx].forEach(px=>{ x.beginPath(); ell(px,ey,20,22); x.fill(); x.stroke(); }); x.fillStyle=ink; [lx,rx].forEach(px=>{ x.beginPath(); ell(px,ey,8,9); x.fill(); }); x.lineWidth=8; break;
+    case 'love': heart(lx,ey,16,'#ff4d6d'); heart(rx,ey,16,'#ff4d6d'); heart(320,90,14,'#ff8fab'); break;
+    case 'sleepy': line(lx); line(rx); x.font='bold 40px sans-serif'; x.fillStyle='#6c7ae0'; x.fillText('Z',300,95); x.font='bold 28px sans-serif'; x.fillText('z',335,65); x.fillStyle=ink; break;
+    case 'wink': dot(lx); x.beginPath(); x.moveTo(rx-16,ey-4); x.lineTo(rx+12,ey+4); x.lineTo(rx-16,ey+12); x.stroke(); break;
+    default: dot(lx); dot(rx);
+  }
+  // 입 / 부리 / 코
+  const my = kind==='frog' ? 215 : 252;
+  if(kind==='chick'){ x.fillStyle='#ff8c42'; x.beginPath();
+    if(expr==='surprised'||expr==='happy'){ x.moveTo(182,my-10); x.lineTo(218,my-10); x.lineTo(200,my+2); x.closePath(); x.moveTo(186,my+4); x.lineTo(214,my+4); x.lineTo(200,my+20); x.closePath(); }
+    else { x.moveTo(182,my-8); x.lineTo(218,my-8); x.lineTo(200,my+14); x.closePath(); }
+    x.fill(); }
+  else {
+    if(kind!=='frog'){ x.fillStyle = kind==='cat'||kind==='rabbit' ? '#ff8fa3' : ink; x.beginPath(); ell(200,my-12,kind==='dog'||kind==='bear'?14:9,kind==='dog'||kind==='bear'?10:7); x.fill(); x.fillStyle=ink; }
+    x.lineWidth=6; x.beginPath();
+    if(expr==='happy'||expr==='love'){ x.moveTo(178,my+2); x.quadraticCurveTo(200,my+34,222,my+2); x.closePath(); x.fillStyle='#e0566b'; x.fill(); x.stroke(); }
+    else if(expr==='sad'||expr==='angry'){ x.moveTo(182,my+18); x.quadraticCurveTo(200,my+2,218,my+18); x.stroke(); }
+    else if(expr==='surprised'){ x.fillStyle='#7a2e3a'; ell(200,my+12,11,14); x.fill(); }
+    else if(expr==='sleepy'){ x.moveTo(190,my+8); x.lineTo(210,my+8); x.stroke(); }
+    else { x.moveTo(180,my+4); x.quadraticCurveTo(190,my+14,200,my+4); x.quadraticCurveTo(210,my+14,220,my+4); x.stroke(); }
+  }
+  // 소품
+  if(acc==='ribbon'){ x.fillStyle='#ff4d6d'; x.beginPath(); x.moveTo(250,95); x.lineTo(215,72); x.lineTo(218,118); x.closePath(); x.moveTo(250,95); x.lineTo(285,72); x.lineTo(282,118); x.closePath(); x.fill(); x.beginPath(); ell(250,95,10,10); x.fill(); }
+  if(acc==='hat'){ x.fillStyle='#4a6cf7'; x.beginPath(); x.moveTo(150,100); x.lineTo(200,10); x.lineTo(250,100); x.closePath(); x.fill(); x.fillStyle='#ffd23f'; x.beginPath(); ell(200,12,13,13); x.fill(); }
+  if(acc==='leaf'){ x.strokeStyle='#3c9d4e'; x.lineWidth=6; x.beginPath(); x.moveTo(200,92); x.lineTo(200,55); x.stroke(); x.fillStyle='#5cc46a'; x.beginPath(); ell(180,52,22,11,-0.5); ell(220,52,22,11,0.5); x.fill(); }
+  if(acc==='glasses'){ x.strokeStyle='#222'; x.lineWidth=6; x.beginPath(); ell(lx,ey,30,26); x.moveTo(rx+30,ey); ell(rx,ey,30,26); x.moveTo(lx+30,ey); x.lineTo(rx-30,ey); x.stroke(); }
+  return c;
+}
+$('makeChar').onclick = () => {
+  EXPRS.forEach(e=>rawImages.push({canvas:drawCharacter(animal, $('bodyColor').value, e, $('acc').value), expr:e}));
+  renderThumbs();
+};
+
+// ===== 1-다. AI로 그리기 (Claude 앱 안에서 열었을 때만) =====
+let sampleFn = null;
+(async()=>{
+  try{
+    if(!window.claude) return;
+    sampleFn = await window.claude.use('sample');
+    if(!sampleFn) return;
+    $('aiTab').hidden = false;
+    const lim = await sampleFn.limits().catch(()=>null);
+    if(lim && lim.images) $('aiRefWrap').hidden = false;
+  }catch(e){}
+})();
+$('aiGo').onclick = async () => {
+  if(!sampleFn) return;
+  const desc = $('aiDesc').value.trim() || '귀여운 동물 캐릭터';
+  const st = $('aiStatus'); $('aiGo').disabled = true; st.textContent = '그리는 중... (30초~1분)';
+  const prompt = `You are a cute sticker illustrator. Draw ONE character described as: "${desc}".
+Return JSON only: {"svgs": {"normal": "<svg...>", "happy": "...", "sad": "...", "angry": "...", "surprised": "...", "love": "...", "sleepy": "...", "wink": "..."}}
+Rules for every SVG: viewBox="0 0 400 400", width="400" height="400", transparent background (no full-size background rect), same character design and colors in all 8, only the face/pose/small symbols change to show the emotion (tears for sad, anger mark for angry, hearts for love, Zzz for sleepy).
+Thick dark outlines (stroke-width 6-8), flat bright colors, big head, kawaii LINE sticker style, character fills most of the canvas. No text, no <script>, no external images, no fonts. Keep each SVG under 2500 characters.`;
+  try{
+    const opts = { modelTier: 'default' };
+    if(!$('aiRefWrap').hidden && $('aiRef').checked){
+      const ref = rawImages.find(r=>r.file); if(ref) opts.images = ref.file;
+    }
+    const res = await sampleFn.json(prompt, opts);
+    const svgs = res && res.svgs || {};
+    let n = 0;
+    for(const e of EXPRS){
+      const svg = svgs[e]; if(typeof svg!=='string' || !svg.includes('<svg')) continue;
+      const clean = svg.replace(/<script[\s\S]*?<\/script>/gi,'');
+      try{ const img = await loadImage('data:image/svg+xml;charset=utf-8,'+encodeURIComponent(clean));
+        rawImages.push({canvas:toCanvas(img,400), expr:e}); n++; }catch(err){}
+    }
+    renderThumbs();
+    st.textContent = n ? `✅ ${n}장 완성!` : '그림을 못 받았어요. 다시 해 보세요.';
+  }catch(e){
+    st.textContent = e && e.code==='not_granted' ? 'AI 사용이 허락되지 않았어요.' : e && e.code==='rate_limited' ? '잠시 후 다시 해 보세요.' : '실패했어요. 다시 해 보세요.';
+  }
+  $('aiGo').disabled = false;
+};
+
+// ===== 배경 지우기: 그림 가장자리에서 배경색과 비슷한 곳을 따라가며 투명하게 =====
+function removeBg(src, tol){
+  const w=src.width, h=src.height, c=document.createElement('canvas'); c.width=w; c.height=h;
+  const x=c.getContext('2d'); x.drawImage(src,0,0);
+  const d=x.getImageData(0,0,w,h), p=d.data;
+  const corners=[0,w-1,(h-1)*w,(h-1)*w+w-1];
+  if(corners.every(i=>p[i*4+3]<20)) return c; // 이미 투명 배경
+  const ref=[0,0,0]; corners.forEach(i=>{for(let k=0;k<3;k++)ref[k]+=p[i*4+k]/4;});
+  const dist=i=>Math.abs(p[i*4]-ref[0])+Math.abs(p[i*4+1]-ref[1])+Math.abs(p[i*4+2]-ref[2]);
+  const seen=new Uint8Array(w*h), stack=[];
+  for(let i=0;i<w;i++){stack.push(i,(h-1)*w+i);} for(let j=0;j<h;j++){stack.push(j*w,j*w+w-1);}
+  const lim=tol*3;
+  while(stack.length){
+    const i=stack.pop(); if(seen[i])continue; seen[i]=1;
+    const dd=dist(i);
+    if(dd>lim){ if(dd<lim*1.6) p[i*4+3]=Math.min(p[i*4+3], Math.round(255*(dd-lim)/(lim*0.6))); continue; } // 경계는 부드럽게
+    p[i*4+3]=0;
+    const xx=i%w;
+    if(xx>0)stack.push(i-1); if(xx<w-1)stack.push(i+1); if(i>=w)stack.push(i-w); if(i<w*(h-1))stack.push(i+w);
+  }
+  x.putImageData(d,0,0); return c;
+}
+// 투명한 빈 곳 잘라내기
+function trim(src){
+  const w=src.width,h=src.height,p=src.getContext('2d').getImageData(0,0,w,h).data;
+  let x0=w,y0=h,x1=-1,y1=-1;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++) if(p[(y*w+x)*4+3]>16){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; }
+  if(x1<0) return src;
+  const c=document.createElement('canvas'); c.width=x1-x0+1; c.height=y1-y0+1;
+  c.getContext('2d').drawImage(src,-x0,-y0); return c;
+}
+// 흰 테두리: 그림 모양을 둥글게 여러 번 찍어서 두껍게 만든 뒤 색칠
+function outlined(src, ow, color){
+  const c=document.createElement('canvas'); c.width=src.width+ow*2; c.height=src.height+ow*2;
+  const x=c.getContext('2d');
+  for(let a=0;a<32;a++){ const r=a/32*Math.PI*2; x.drawImage(src, ow+Math.cos(r)*ow, ow+Math.sin(r)*ow); }
+  x.globalCompositeOperation='source-in'; x.fillStyle=color; x.fillRect(0,0,c.width,c.height);
+  x.globalCompositeOperation='source-over'; x.drawImage(src,ow,ow); return c;
+}
+// 좌우반전 / 기울이기
+function transformed(src, flip, angle){
+  if(!flip && !angle) return src;
+  const r=angle*Math.PI/180, cw=Math.abs(src.width*Math.cos(r))+Math.abs(src.height*Math.sin(r)), ch=Math.abs(src.width*Math.sin(r))+Math.abs(src.height*Math.cos(r));
+  const c=document.createElement('canvas'); c.width=Math.ceil(cw); c.height=Math.ceil(ch); const x=c.getContext('2d');
+  x.translate(c.width/2,c.height/2); x.rotate(r); if(flip) x.scale(-1,1); x.drawImage(src,-src.width/2,-src.height/2); return c;
+}
+
+// ===== 스티커 한 장 그리기 =====
+function drawSticker(i){
+  const s = stickers[i], opt = s.opt;
+  const c = s.canvas, x = c.getContext('2d'); x.clearRect(0,0,W,H);
+  const showText = $('text').checked && s.caption.trim();
+  const font = $('font').value, top = $('pos').value==='top';
+  const textH = showText ? 70 : 0;
+  let img = transformed(sources[s.src].canvas, opt.flip, opt.angle);
+  if($('outline').checked) img = outlined(img, +$('ow').value, $('oc').value);
+  const boxW = W-PAD*2, boxH = H-PAD*2-textH*0.75; // 글자와 살짝 겹치게
+  const sc = Math.min(boxW/img.width, boxH/img.height);
+  const iw = img.width*sc, ih = img.height*sc;
+  const ix = (W-iw)/2, iy = top ? H-PAD-ih : PAD;
+  x.drawImage(img, ix, iy, iw, ih);
+  if(s.emoji.trim()){
+    x.font = '54px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    x.textAlign='center'; x.textBaseline='middle';
+    const ex = opt.decoLeft ? PAD+30 : W-PAD-30, ey = top ? H*0.5 : PAD+32;
+    x.save(); x.translate(ex,ey); x.rotate((opt.decoLeft?-1:1)*0.2); x.fillText(s.emoji,0,0); x.restore();
+  }
+  if(showText){
+    let size = 56; x.font = `${size}px "${font}"`;
+    while(x.measureText(s.caption).width > W-PAD*2-16 && size>22){ size-=2; x.font=`${size}px "${font}"`; }
+    x.textAlign='center'; x.textBaseline='middle';
+    const ty = top ? PAD+textH/2 : H-PAD-textH/2;
+    x.lineJoin='round';
+    x.lineWidth = 12; x.strokeStyle = '#ffffff'; x.strokeText(s.caption, W/2, ty);
+    x.fillStyle = $('autoColor').checked ? COLORS[i%COLORS.length] : $('tc').value;
+    x.fillText(s.caption, W/2, ty);
+  }
+}
+// 대표(main) / 탭(tab) 이미지
+function drawIcon(w,h,pad){
+  const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d');
+  const first = sources.find(s=>s.expr==='happy') || sources[0];
+  let img = first.canvas; if($('outline').checked) img = outlined(img, Math.max(2,Math.round(+$('ow').value*w/W*1.4)), $('oc').value);
+  const sc=Math.min((w-pad*2)/img.width,(h-pad*2)/img.height);
+  x.drawImage(img,(w-img.width*sc)/2,(h-img.height*sc)/2,img.width*sc,img.height*sc); return c;
+}
+
+// ===== 만들기 =====
+$('make').onclick = async () => {
+  if(!rawImages.length){ alert('먼저 1번에서 그림을 넣거나 캐릭터를 만들어 주세요!'); return; }
+  $('make').disabled = true; $('make').textContent = '만드는 중...';
+  await new Promise(r=>setTimeout(r,30));
+  try{ await document.fonts.load(`40px "${$('font').value}"`); }catch(e){}
+  sources = rawImages.map(r => ({canvas: trim($('bg').checked ? removeBg(r.canvas, +$('tol').value) : r.canvas), expr: r.expr}));
+  const n = +$('count').value, deco = $('deco').checked, vary = $('vary').checked;
+  const used = {}; // 그림마다 몇 번 썼는지
+  let cycle = 0;
+  stickers = [];
+  for(let i=0;i<n;i++){
+    // 문구 표정과 맞는 그림 고르기 → 없으면 순서대로
+    const want = PHRASES[i][2];
+    const match = sources.map((s,k)=>k).filter(k=>sources[k].expr===want);
+    const src = match.length ? match[(used['e'+want]=(used['e'+want]||0)+1)%match.length] : (cycle++)%sources.length;
+    const round = used[src] = (used[src]===undefined ? 0 : used[src]+1);
+    const opt = { flip: vary && round%2===1, angle: vary && round>0 ? [0,-8,8,-5,5][round%5] : 0, decoLeft: i%2===1 };
+    const c = document.createElement('canvas'); c.width=W; c.height=H;
+    stickers.push({ src, caption: PHRASES[i][0], emoji: deco?PHRASES[i][1]:'', opt, canvas: c });
+  }
+  renderGrid();
+  $('make').disabled = false; $('make').textContent = '✨ 다시 만들기';
+  $('resultCard').hidden = false; $('dlCard').hidden = false; $('status').textContent='';
+  $('resultCard').scrollIntoView({behavior:'smooth'});
+};
+
+function renderGrid(){
+  const g = $('grid'); g.innerHTML='';
+  stickers.forEach((s,i)=>{
+    drawSticker(i);
+    const box=document.createElement('div'); box.className='st';
+    const meta=document.createElement('div'); meta.className='meta'; meta.innerHTML=`<span>${String(i+1).padStart(2,'0')}.png</span><span>그림 바꾸기 ▸</span>`;
+    meta.lastChild.style.cursor='pointer';
+    meta.lastChild.onclick=()=>{ s.src=(s.src+1)%sources.length; drawSticker(i); };
+    const two=document.createElement('div'); two.className='two';
+    const cap=document.createElement('input'); cap.type='text'; cap.value=s.caption; cap.placeholder='글자';
+    const emo=document.createElement('input'); emo.type='text'; emo.value=s.emoji; emo.placeholder='이모지';
+    cap.oninput=()=>{ s.caption=cap.value; drawSticker(i); };
+    emo.oninput=()=>{ s.emoji=emo.value; drawSticker(i); };
+    two.append(cap,emo); box.append(s.canvas, meta, two); g.appendChild(box);
+  });
+  const sp=$('special'); sp.innerHTML='';
+  [['main.png',240,240,10],['tab.png',96,74,4]].forEach(([n,w,h,p])=>{
+    const d=document.createElement('div'); const c=drawIcon(w,h,p); d.append(c, n+` (${w}×${h})`); sp.appendChild(d);
+  });
+}
+['outline','ow','oc','text','font','pos','tc','autoColor'].forEach(id=>$(id).addEventListener('input',async()=>{
+  if(!stickers.length) return;
+  if(id==='font'){ try{ await document.fonts.load(`40px "${$('font').value}"`); }catch(e){} }
+  renderGrid();
+}));
+
+// ===== ZIP 파일 만들기 (외부 부품 없이 직접) =====
+const CRC = (()=>{ const t=new Uint32Array(256); for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++) c = c&1 ? 0xEDB88320^(c>>>1) : c>>>1; t[n]=c>>>0; } return t; })();
+const crc32 = b => { let c=0xFFFFFFFF; for(let i=0;i<b.length;i++) c = CRC[(c^b[i])&255]^(c>>>8); return (c^0xFFFFFFFF)>>>0; };
+function makeZip(files){ // files: [{name, data:Uint8Array}] — PNG는 이미 압축돼 있어 '그대로 저장' 방식
+  const parts=[], central=[]; let offset=0;
+  const enc=new TextEncoder();
+  for(const f of files){
+    const name=enc.encode(f.name), crc=crc32(f.data), size=f.data.length;
+    const lh=new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint16(8,0,true);
+    lh.setUint16(10,0,true); lh.setUint16(12,0x21,true); // 시간·날짜 (1980-01-01)
+    lh.setUint32(14,crc,true); lh.setUint32(18,size,true); lh.setUint32(22,size,true); lh.setUint16(26,name.length,true);
+    parts.push(new Uint8Array(lh.buffer), name, f.data);
+    const ch=new DataView(new ArrayBuffer(46));
+    ch.setUint32(0,0x02014b50,true); ch.setUint16(4,20,true); ch.setUint16(6,20,true); ch.setUint16(14,0x21,true);
+    ch.setUint32(16,crc,true); ch.setUint32(20,size,true); ch.setUint32(24,size,true); ch.setUint16(28,name.length,true); ch.setUint32(42,offset,true);
+    central.push(new Uint8Array(ch.buffer), name);
+    offset += 30+name.length+size;
+  }
+  const cdSize = central.reduce((a,b)=>a+b.length,0);
+  const end=new DataView(new ArrayBuffer(22));
+  end.setUint32(0,0x06054b50,true); end.setUint16(8,files.length,true); end.setUint16(10,files.length,true);
+  end.setUint32(12,cdSize,true); end.setUint32(16,offset,true);
+  return new Blob([...parts,...central,new Uint8Array(end.buffer)],{type:'application/zip'});
+}
+
+// ===== ZIP 받기 =====
+const pngBytes = c => new Promise(r=>c.toBlob(b=>b.arrayBuffer().then(a=>r(new Uint8Array(a))),'image/png'));
+$('zip').onclick = async () => {
+  const st=$('status'); st.textContent='ZIP 만드는 중...';
+  const files=[], big=[];
+  files.push({name:'main.png', data: await pngBytes(drawIcon(240,240,10))});
+  files.push({name:'tab.png', data: await pngBytes(drawIcon(96,74,4))});
+  for(let i=0;i<stickers.length;i++){
+    drawSticker(i);
+    const d = await pngBytes(stickers[i].canvas);
+    if(d.length > 1024*1024) big.push(i+1);
+    files.push({name:String(i+1).padStart(2,'0')+'.png', data:d});
+  }
+  const blob = makeZip(files), name = 'line_stickers.zip';
+  try{
+    const dl = window.claude ? await window.claude.use('downloads') : null;
+    if(dl){ await dl.save({filename:name, data:blob}); }
+    else { const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),5000); }
+    st.innerHTML = `<span class="ok">✅ 완료! 스티커 ${stickers.length}개 + main + tab (${(blob.size/1024).toFixed(0)}KB)</span>` + (big.length?`<br>⚠️ 1MB 넘는 스티커: ${big.join(', ')}번`:'');
+  }catch(e){
+    st.textContent = e && e.code==='declined' ? '받기를 취소했어요.' : '받기에 실패했어요: '+(e.message||e.code||e);
+  }
+};
+</script>
+</body>
+</html>
