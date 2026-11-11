@@ -13,6 +13,11 @@ import type { HandoffPlan } from '@/lib/handoff';
  *
  * 그리고 복사는 브라우저마다 막히는 경우가 있어서,
  * 아래에 내용 상자를 항상 띄워둡니다. 버튼이 안 되면 직접 길게 눌러 복사하시면 됩니다.
+ *
+ * 네이버는 '단계별'로 보여줍니다.
+ *  네이버 블로그는 제목 칸과 본문 칸이 따로라서, 한 덩어리로 복사해주면
+ *  붙여넣은 뒤에 제목을 손으로 잘라내야 했습니다. 그래서 제목·사진·본문·해시태그를
+ *  순서대로 하나씩 복사하게 바꿨습니다. 어디까지 했는지 체크도 남습니다.
  */
 
 /** 옛 방식(execCommand)을 먼저 씁니다. 휴대폰 브라우저에서 제일 잘 통합니다. */
@@ -61,6 +66,24 @@ export default function HandoffButtons({
   // 채널별로 "몇 번째 조각을 복사했는지"와 안내 문구를 따로 들고 있습니다.
   const [msg, setMsg] = useState<Record<string, { ok: boolean; text: string }>>({});
   const [part, setPart] = useState<Record<string, number>>({});
+  // 단계별 진행 체크: { naver: { title: true, photo: false, ... } }
+  const [done, setDone] = useState<Record<string, Record<string, boolean>>>({});
+
+  function markDone(channel: string, key: string, value: boolean) {
+    setDone((d) => ({ ...d, [channel]: { ...(d[channel] ?? {}), [key]: value } }));
+  }
+
+  /** 단계 하나를 복사하고, 됐으면 체크까지 켜줍니다. */
+  async function copyStep(channel: string, key: string, text: string, label: string) {
+    const ok = await copyText(text);
+    if (ok) markDone(channel, key, true);
+    setMsg((m) => ({
+      ...m,
+      [channel]: ok
+        ? { ok: true, text: `${label} 복사됐어요. 네이버 화면에 붙여넣으세요.` }
+        : { ok: false, text: '복사 버튼이 막혀 있어요. 아래 상자를 길게 눌러 직접 복사해주세요.' },
+    }));
+  }
 
   const [canShareFiles, setCanShareFiles] = useState(false);
   const [canShareText, setCanShareText] = useState(false);
@@ -115,6 +138,109 @@ export default function HandoffButtons({
         const index = part[plan.channel] ?? 0;
         const info = msg[plan.channel];
         const multi = plan.parts.length > 1;
+
+        const steps = plan.steps ?? [];
+        const doneMap = done[plan.channel] ?? {};
+        const doneCount = steps.filter((st) => doneMap[st.key]).length;
+
+        if (steps.length > 0) {
+          return (
+            <div key={plan.channel} style={{ marginBottom: 18 }}>
+              <p className="note" style={{ marginTop: 0, marginBottom: 6 }}>
+                <b>{plan.label}</b> — 먼저 글쓰기 화면을 열고, 순서대로 하나씩 하세요.
+              </p>
+
+              <button
+                className="btn-main"
+                style={{ width: '100%' }}
+                onClick={() => openApp(plan)}
+              >
+                네이버 글쓰기 화면 열기
+              </button>
+
+              <p className="note" style={{ marginTop: 10, marginBottom: 6 }}>
+                진행 <b>{doneCount}</b> / {steps.length}
+              </p>
+
+              {steps.map((st, i) => {
+                const isDone = Boolean(doneMap[st.key]);
+                return (
+                  <div
+                    key={st.key}
+                    style={{
+                      border: '1px solid var(--line, #ddd)',
+                      borderRadius: 12,
+                      padding: 12,
+                      marginBottom: 8,
+                      opacity: isDone ? 0.6 : 1,
+                    }}
+                  >
+                    <p style={{ margin: 0, fontWeight: 700 }}>
+                      {isDone ? '✅' : `${i + 1}.`} {st.label}
+                      {st.copyable && st.text ? (
+                        <span className="note" style={{ fontWeight: 400 }}> ({st.text.length}자)</span>
+                      ) : null}
+                    </p>
+                    <p className="note" style={{ margin: '4px 0 8px' }}>{st.hint}</p>
+
+                    {st.copyable ? (
+                      <button
+                        className={isDone ? 'btn-sub' : 'btn-main'}
+                        style={{ width: '100%' }}
+                        onClick={() => copyStep(plan.channel, st.key, st.text, st.label)}
+                      >
+                        {isDone ? '다시 복사하기' : `${st.label} 복사하기`}
+                      </button>
+                    ) : (
+                      <button
+                        className={isDone ? 'btn-sub' : 'btn-main'}
+                        style={{ width: '100%' }}
+                        onClick={() => markDone(plan.channel, st.key, !isDone)}
+                      >
+                        {isDone ? '다시 할래요' : '했어요'}
+                      </button>
+                    )}
+
+                    {st.copyable && st.text ? (
+                      <details style={{ marginTop: 8 }}>
+                        <summary className="note" style={{ cursor: 'pointer' }}>
+                          복사가 안 되면 여기를 눌러 직접 복사하세요
+                        </summary>
+                        <textarea
+                          readOnly
+                          value={st.text}
+                          style={{ minHeight: st.key === 'body' ? 200 : 70, marginTop: 6 }}
+                          onFocus={(e) => e.currentTarget.select()}
+                        />
+                      </details>
+                    ) : null}
+                  </div>
+                );
+              })}
+
+              {(canShareText || canShareFiles) && (
+                <button
+                  className="btn-sub"
+                  style={{ width: '100%', marginTop: 4 }}
+                  onClick={() => share(plan, 0, canShareFiles)}
+                >
+                  {canShareFiles ? '📷 사진과 함께 공유로 보내기' : '공유로 보내기 (복사가 안 될 때)'}
+                </button>
+              )}
+
+              {info && (
+                <p className="note" style={{ color: info.ok ? undefined : 'var(--bad)' }}>
+                  {info.ok ? '✅' : '⚠️'} {info.text}
+                </p>
+              )}
+
+              <p className="note" style={{ marginTop: 10 }}>
+                💡 <b>매일 올리기가 번거로우면</b> — 글을 여러 편 올려두고 [예약]으로
+                날짜를 하루씩 걸어두세요. 그 뒤로는 저절로 올라갑니다.
+              </p>
+            </div>
+          );
+        }
 
         return (
           <div key={plan.channel} style={{ marginBottom: 18 }}>
