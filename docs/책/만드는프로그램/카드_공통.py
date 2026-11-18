@@ -15,17 +15,29 @@ CREAM=(250,246,238); INK=(29,38,54); INK_SOFT=(92,104,122); MILK=(238,236,230)
 ACCENT=(198,106,74); TEAL=(94,134,128); GOLD=(191,150,73); LINE=(221,213,200)
 def _sw(size, bold):
     return max(1, round(size/26)) if bold else 0
+
+def alpha_lines(im, paths, color, width):
+    """반투명 선을 끊겨 보이지 않게 그린다.
+    ImageDraw 를 'RGBA' 로 열고 반투명 선을 그리면, 선분이 겹치는 자리마다
+    색이 두 번 섞여서 철길처럼 눈금이 생긴다.
+    그래서 투명한 종이에 '불투명하게' 먼저 그린 뒤,
+    그 종이 전체를 한 번에 반투명으로 겹친다."""
+    r,g,b,a = color
+    lay = Image.new('RGBA', im.size, (0,0,0,0))
+    ld = ImageDraw.Draw(lay)            # 'RGBA' 를 안 줘야 덮어쓰기로 그려진다
+    for pts in paths:
+        ld.line(pts, fill=(r,g,b,a), width=width, joint='curve')
+    im.paste(Image.alpha_composite(im.convert('RGBA'), lay).convert('RGB'), (0,0))
+
 def bg_light():
-    im=Image.new('RGB',(W,H),CREAM); d=ImageDraw.Draw(im,'RGBA')
-    for i in range(7):
-        x=120+i*160
-        d.line([(x+26*math.sin(y/55.0+i),y) for y in range(0,H,6)],fill=(94,134,128,16),width=26)
+    im=Image.new('RGB',(W,H),CREAM)
+    paths=[[(120+i*160+26*math.sin(y/55.0+i),y) for y in range(0,H,6)] for i in range(7)]
+    alpha_lines(im,paths,(94,134,128,16),26)
     return im
 def bg_dark():
-    im=Image.new('RGB',(W,H),(26,34,48)); d=ImageDraw.Draw(im,'RGBA')
-    for i in range(7):
-        x=90+i*165
-        d.line([(x+30*math.sin(y/50.0+i),y) for y in range(0,H,6)],fill=(255,255,255,12),width=30)
+    im=Image.new('RGB',(W,H),(26,34,48))
+    paths=[[(90+i*165+30*math.sin(y/50.0+i),y) for y in range(0,H,6)] for i in range(7)]
+    alpha_lines(im,paths,(255,255,255,12),30)
     return im
 def card(d,box,fill=(255,255,255,235),radius=26,outline=None):
     d.rounded_rectangle(box,radius=radius,fill=fill,outline=outline,width=2 if outline else 0)
